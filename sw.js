@@ -2,7 +2,7 @@
 // si no hay conexion usa la copia guardada.
 // Solo guarda archivos de la propia app: nunca respuestas de Supabase ni de otros
 // servidores, para que los datos de las personas no queden copiados en el telefono.
-const CACHE = 'opsflow-v2';
+const CACHE = 'opsflow-v3';
 const APP = ['./', './index.html', './demo.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -21,4 +21,29 @@ self.addEventListener('fetch', e => {
       .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request))
   );
+});
+
+// Avisos: mostrar la notificacion aunque la app este cerrada, y avisar a la app si esta abierta
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'OpsFlow', body: e.data ? e.data.text() : '' }; }
+  const url = new URL(d.url || './', self.registration.scope).href;
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(d.title || 'OpsFlow', {
+      body: d.body || '', tag: d.tag || undefined, renotify: true,
+      icon: 'icon-192.png', badge: 'icon-192.png', vibrate: [200, 100, 200], data: { url },
+    }),
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(cs => cs.forEach(c => c.postMessage({ tipo: 'aviso' }))),
+  ]));
+});
+// Al tocar el aviso: abrir la app en la pantalla que toca
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    const c = cs.find(x => x.url.startsWith(self.registration.scope));
+    if (c) return c.focus().then(w => (w || c).navigate ? (w || c).navigate(url) : null).catch(() => self.clients.openWindow(url));
+    return self.clients.openWindow(url);
+  }));
 });
