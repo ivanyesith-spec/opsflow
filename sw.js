@@ -2,7 +2,7 @@
 // si no hay conexion usa la copia guardada.
 // Solo guarda archivos de la propia app: nunca respuestas de Supabase ni de otros
 // servidores, para que los datos de las personas no queden copiados en el telefono.
-const CACHE = 'opsflow-v3';
+const CACHE = 'opsflow-v4';
 const APP = ['./', './index.html', './demo.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -17,7 +17,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    // Siempre preguntar a GitHub si hay version nueva (sin esperar a la cache del navegador)
+    fetch(e.request.mode === 'navigate' ? new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }) : e.request, e.request.mode === 'navigate' ? undefined : { cache: 'no-cache' })
       .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request))
   );
