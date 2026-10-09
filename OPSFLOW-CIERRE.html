@@ -1,0 +1,1753 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OpsFlow</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f2937">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --ground:#F4F6FA;--surface:#FFFFFF;--surface-2:#EDF1F7;
+  --ink:#0F1E2E;--ink-2:#54677C;--ink-3:#8496A8;
+  --line:#D9E1EA;--accent:#1877E0;--accent-ink:#FFFFFF;--accent-soft:#E4EFFC;
+  --ok:#1F8A5A;--ok-soft:#E0F1E9;--crit:#C0392B;--crit-soft:#FAE4E1;
+  --shadow:0 1px 2px rgba(15,30,46,.06),0 8px 24px -16px rgba(15,30,46,.35);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0A1628;--surface:#12233A;--surface-2:#0D1B2E;
+  --ink:#E9EFF6;--ink-2:#93A7BA;--ink-3:#6C8098;
+  --line:#22374F;--accent:#4FA9F5;--accent-ink:#06121F;--accent-soft:#0F2C4A;
+  --ok:#5FC79A;--ok-soft:#0E2B22;--crit:#E68374;--crit-soft:#331C1A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--ground);color:var(--ink);
+  font-family:"Source Sans 3","Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+h1,h2{font-family:Archivo,"Segoe UI",system-ui,sans-serif;margin:0;letter-spacing:-.015em}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:440px;margin:0 auto;padding:32px 0}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.brand{font-family:Archivo,sans-serif;font-weight:700;font-size:22px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow)}
+.card + .card{margin-top:16px}
+.sub{color:var(--ink-2);margin:4px 0 20px}
+label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px}
+input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:16px}
+.btn{display:block;width:100%;margin-top:20px;padding:13px;border:0;border-radius:10px;
+  background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.icon{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
+  font-weight:700;cursor:pointer}
+.msg{margin-top:16px;padding:10px 12px;border-radius:10px;font-size:14px}
+.msg.err{background:var(--crit-soft);color:var(--crit)}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.link{background:none;border:0;color:var(--accent);padding:0;margin-top:16px;cursor:pointer;font-size:14px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
+dt{color:var(--ink-2)}dd{margin:0;font-weight:600}
+ul.people{list-style:none;margin:12px 0 0;padding:0}
+ul.people li > span:first-child{min-width:40%}
+ul.people li{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.tag{font-size:13px;color:var(--ink-2)}
+.off{color:var(--ink-3);text-decoration:line-through}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);
+  max-width:400px;width:calc(100% - 32px);padding:24px}
+dialog::backdrop{background:rgba(10,22,40,.5)}
+dialog h2{font-size:20px;margin-bottom:12px}
+dialog p{margin:8px 0}
+.center{text-align:center;color:var(--ink-2);padding:48px 0}
+select{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.btn.sm{width:auto;margin:0;padding:8px 14px;font-size:14px}
+.secret{font-family:ui-monospace,Menlo,monospace;font-size:20px;font-weight:700;letter-spacing:.04em;
+  background:var(--surface-2);border:1px dashed var(--line);border-radius:10px;padding:12px;text-align:center;margin:8px 0}
+.warn{font-size:14px;color:var(--ink-2)}
+.pbtn{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:8px;width:100%;padding:10px 0;cursor:pointer}
+.pbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+ul.people li.click{padding:0}
+.pbtn > span:first-child{min-width:40%}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.wrap.wide{max-width:760px}
+:root{--warn:#A3510C;--warn-soft:#FBEBDD}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--warn:#F0A060;--warn-soft:#3A2412}}
+nav.tabs{display:flex;flex-wrap:wrap;gap:6px;background:var(--surface-2);border-radius:12px;padding:4px;margin-bottom:16px}
+nav.tabs button{flex:1 1 auto;border:0;background:transparent;padding:10px 6px;border-radius:9px;font-weight:600;color:var(--ink-2);cursor:pointer}
+nav.tabs button[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+textarea{width:100%;min-height:140px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);
+  font-family:ui-monospace,Menlo,monospace;font-size:15px;resize:vertical}
+.lista{list-style:none;margin:12px 0 0;padding:0}
+.lista li{border-top:1px solid var(--line)}
+.fila{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:2px 12px;width:100%;padding:12px 0}
+button.fila{cursor:pointer}
+button.fila:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.fila b{font-weight:600}
+.cod{font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:700}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.pill.test{background:var(--accent-soft);color:var(--accent)}
+.pill.prio{background:var(--warn-soft);color:var(--warn)}
+.pill.off{background:var(--crit-soft);color:var(--crit);text-decoration:none}
+.hora{font-family:ui-monospace,Menlo,monospace;font-weight:700;text-align:right}
+.res h3{font-size:15px;margin:14px 0 4px}
+.res ul{margin:0;padding-left:18px;font-size:14px}
+.stats{display:flex;gap:16px;margin:4px 0 0;color:var(--ink-2);font-size:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.check{display:flex;align-items:center;gap:10px;margin-top:16px;font-weight:600}
+.check input{width:20px;height:20px}
+.empty{color:var(--ink-2);padding:16px 0 4px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.btns .btn{flex:1 1 140px;width:auto;margin:0}
+.tarjeta{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--surface)}
+.tarjeta + .tarjeta{margin-top:12px}
+.tarjeta.prio{border-color:var(--crit);box-shadow:inset 4px 0 0 var(--crit)}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;margin-right:8px}
+.pill.e-sin_asignar,.pill.e-abierto{background:var(--surface-2);color:var(--ink-2)}
+.pill.e-asignada,.pill.e-preparado{background:var(--accent-soft);color:var(--accent)}
+.pill.e-en_curso,.pill.e-entregado{background:var(--warn-soft);color:var(--warn)}
+.pill.e-terminada,.pill.e-cerrado{background:var(--ok-soft);color:var(--ok)}
+.pill.e-no_pude_entrar,.pill.rojo{background:var(--crit-soft);color:var(--crit)}
+.asig{display:grid;grid-template-columns:1fr 70px 1fr;gap:8px;margin-top:8px}
+.asig select,.asig input{padding:8px 10px;font-size:15px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+.tile{background:var(--surface-2);border-radius:12px;padding:14px}
+.tile b{display:block;font-family:Archivo,sans-serif;font-size:28px}
+.tile span{font-size:13px;color:var(--ink-2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px}
+.pends{list-style:none;margin:10px 0 0;padding:0;font-size:14px}
+.pends li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:420px;width:calc(100% - 32px);z-index:10}
+.barra{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.barra input[type=date]{width:auto}
+/* Limpieza guiada */
+.pasos{list-style:none;margin:8px 0 0;padding:0}
+.pasos li{border-top:1px solid var(--line)}
+.paso{display:flex;align-items:flex-start;gap:12px;margin:0;padding:12px 0;font-weight:400;font-size:16px;cursor:pointer}
+.paso input{flex:none;width:24px;height:24px;margin:0;accent-color:var(--ok)}
+.paso input:checked + span{color:var(--ink-2);text-decoration:line-through}
+.fotos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.foto{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:120px;margin:0;
+  border:2px dashed var(--line);border-radius:12px;background:var(--surface-2);cursor:pointer;text-align:center;padding:10px;font-size:15px;overflow:hidden}
+.foto.ok{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+.foto.sube{opacity:.6;cursor:wait}
+.foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35}
+.foto > *:not(img){position:relative}
+.foto input{position:absolute;opacity:0;width:1px;height:1px}
+.foto svg{width:28px;height:28px}
+.pie{position:sticky;bottom:8px;z-index:2}
+#scVideo{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:#000;display:block}
+#scVideo[hidden]{display:none}
+.subir{display:block;text-align:center;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px;font-weight:600;color:var(--accent);cursor:pointer;font-size:15px}
+.subir input{position:absolute;opacity:0;width:1px;height:1px}
+.prog{font-size:14px;color:var(--ink-2);margin-top:6px}
+.galeria{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.galeria a{display:block;border-radius:10px;overflow:hidden;background:var(--surface-2);text-decoration:none;color:var(--ink-2);font-size:13px;text-align:center}
+.galeria img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.tabla-wrap{overflow-x:auto;margin-top:12px}
+table.tabla{width:100%;border-collapse:collapse;font-size:14px}
+.tabla th{text-align:left;font-weight:600;color:var(--ink-2);padding:8px 10px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.tabla td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.tabla td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+fieldset.preg{border:0;border-top:1px solid var(--line);margin:0;padding:14px 0 4px}
+fieldset.preg legend{font-weight:600;padding:0;margin-bottom:8px;float:left;width:100%}
+.sino{display:flex;align-items:center;gap:8px;margin-top:8px;clear:both}
+.sino > span{flex:1 1 auto}
+.sino label{margin:0;font-weight:600;font-size:15px}
+.sino input{position:absolute;opacity:0;width:1px;height:1px}
+.sino label span{display:inline-block;min-width:64px;text-align:center;padding:9px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--surface)}
+.sino input:checked + span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sino input.malo:checked + span{background:var(--crit);border-color:var(--crit)}
+.sino input:focus-visible + span{outline:2px solid var(--accent);outline-offset:2px}
+.extra{clear:both;margin-top:10px}
+.cierre-res{list-style:none;margin:8px 0 0;padding:0;font-size:14px}
+.cierre-res li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+#print{display:none}
+@media print{
+  body{background:#fff;padding:0}
+  body > *:not(#print){display:none !important}
+  #print{display:block;color:#000;font-family:Arial,sans-serif}
+  .pegs{display:grid;grid-template-columns:repeat(3,1fr);gap:6mm}
+  .peg{border:1px dashed #999;border-radius:3mm;padding:4mm;text-align:center;break-inside:avoid;display:flex;flex-direction:column;align-items:center;gap:1mm}
+  .peg svg{width:40mm;height:40mm}
+  .peg b{font-family:monospace;font-size:14pt}
+  .peg span{font-size:9pt}
+  .peg small{font-size:7pt;color:#444}
+  @page{size:A4;margin:10mm}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <span class="brand">OpsFlow</span>
+    <button class="icon" id="helpBtn" aria-label="Help / Ayuda">?</button>
+  </div>
+  <main id="app" aria-live="polite"><p class="center">…</p></main>
+</div>
+
+<dialog id="help">
+  <h2>Help · Ayuda</h2>
+  <p><b>Forgot your password?</b> Ask Operations for a new one.<br><span class="tag">¿Olvidaste tu contraseña? Pídele una nueva a Operación.</span></p>
+  <p><b>Install the app:</b> iPhone → Safari → Share → Add to Home Screen. Android → Chrome → ⋮ → Install app.<br><span class="tag">Instalar: iPhone → Safari → Compartir → Añadir a pantalla de inicio. Android → Chrome → ⋮ → Instalar app.</span></p>
+  <p><b>The camera does not open?</b> Allow the camera for OpsFlow (iPhone: Settings → Safari → Camera). Or use "Take a photo of the QR instead".<br><span class="tag">¿No se abre la cámara? Permite la cámara para OpsFlow, o usa "Take a photo of the QR instead".</span></p>
+  <p><b>"Account disabled"?</b> Talk to Operations.<br><span class="tag">¿"Cuenta desactivada"? Habla con Operación.</span></p>
+  <button class="btn" id="helpClose">OK</button>
+</dialog>
+
+<dialog id="dNueva">
+  <form id="fNueva" method="dialog" novalidate>
+    <h2>Crear cuenta</h2>
+    <label for="nNombre">Nombre</label>
+    <input id="nNombre" autocomplete="off" required>
+    <label for="nCorreo">Correo</label>
+    <input id="nCorreo" type="email" inputmode="email" autocomplete="off" required>
+    <div class="row2">
+      <div><label for="nDep">Departamento</label>
+        <select id="nDep"><option>Limpieza</option><option>Linens</option><option>Drivers</option><option>Bodega</option><option>Operación</option></select></div>
+      <div><label for="nNivel">Nivel</label>
+        <select id="nNivel"><option value="operador">Operador</option><option value="lider">Líder</option><option value="operacion">Operación</option></select></div>
+      <div><label for="nZona">Zona</label>
+        <select id="nZona"><option value="Norte">Norte</option><option value="Centro">Centro</option><option value="Sur">Sur</option><option value="">Todas</option></select></div>
+      <div><label for="nIdioma">Idioma de la app</label>
+        <select id="nIdioma"><option value="en">English</option><option value="es">Español</option></select></div>
+    </div>
+    <div id="nMsg"></div>
+    <button class="btn" id="nGo" value="crear">Crear cuenta</button>
+    <button type="button" class="btn ghost" id="nCancel">Cancelar</button>
+  </form>
+</dialog>
+
+<dialog id="dClave">
+  <h2 id="cTitulo">Cuenta creada</h2>
+  <p id="cQuien"></p>
+  <p class="warn">Contraseña temporal. <b>Solo se muestra esta vez</b>: cópiala ahora. La persona la cambiará al entrar.</p>
+  <div class="secret" id="cClave"></div>
+  <button class="btn" id="cCopiar">Copiar mensaje para WhatsApp</button>
+  <button class="btn ghost" id="cListo">Listo</button>
+</dialog>
+
+<dialog id="dPersona">
+  <h2 id="pNombre"></h2>
+  <p class="tag" id="pDatos"></p>
+  <div id="pMsg"></div>
+  <button class="btn" id="pReset">Resetear contraseña</button>
+  <button class="btn ghost" id="pEstado"></button>
+  <button class="btn ghost" id="pCerrar">Cerrar</button>
+</dialog>
+
+<dialog id="dProp">
+  <form id="fProp" method="dialog" novalidate>
+    <h2 id="prTitulo">Propiedad</h2>
+    <div class="row3">
+      <div><label for="prCodigo">Código</label><input id="prCodigo" autocomplete="off" autocapitalize="characters" required></div>
+      <div><label for="prPueblo">Pueblo</label><input id="prPueblo" autocomplete="off" required></div>
+    </div>
+    <label for="prNombre">Nombre (título del listing)</label><input id="prNombre" autocomplete="off" required>
+    <label for="prDir">Dirección</label><input id="prDir" autocomplete="off">
+    <label for="prMapa">Enlace de mapa</label><input id="prMapa" type="url" inputmode="url" autocomplete="off">
+    <div class="row3">
+      <div><label for="prZona">Zona</label><select id="prZona"><option>Norte</option><option>Centro</option><option>Sur</option></select></div>
+      <div><label for="prBanos">Baños</label><input id="prBanos" type="number" min="0" max="10" inputmode="numeric"></div>
+      <div><label for="prDobles">Camas dobles</label><input id="prDobles" type="number" min="0" max="10" inputmode="numeric"></div>
+      <div><label for="prIndiv">Camas individuales</label><input id="prIndiv" type="number" min="0" max="10" inputmode="numeric"></div>
+      <div><label for="prSofas">Sofás cama</label><input id="prSofas" type="number" min="0" max="5" inputmode="numeric"></div>
+    </div>
+    <label for="prNotas">Notas</label><input id="prNotas" autocomplete="off">
+    <label class="check"><input type="checkbox" id="prActiva"> Activa</label>
+    <label class="check"><input type="checkbox" id="prPrueba"> Dato de prueba (TEST)</label>
+    <div id="prMsg"></div>
+    <button class="btn" id="prGo">Guardar</button>
+    <button type="button" class="btn ghost" id="prCancel">Cancelar</button>
+    <button type="button" class="btn ghost danger" id="prQR" hidden>Regenerar QR</button>
+  </form>
+</dialog>
+
+<dialog id="dRep">
+  <form id="fRep" method="dialog" novalidate>
+    <h2 id="rTitulo">Report missing item</h2>
+    <label for="rTipo">Type</label>
+    <select id="rTipo"><option value="linens">Linens / towels</option><option value="otro">Other (tell the leader)</option></select>
+    <label for="rDetalle">What is missing?</label>
+    <input id="rDetalle" autocomplete="off" placeholder="e.g. Large towel">
+    <div class="chips" id="rChips"></div>
+    <label for="rCant">How many?</label>
+    <input id="rCant" type="number" min="1" max="50" value="1" inputmode="numeric">
+    <div id="rMsg"></div>
+    <button class="btn" id="rGo">Send</button>
+    <button type="button" class="btn ghost" id="rCancel">Cancel</button>
+  </form>
+</dialog>
+
+<dialog id="dNoEntro">
+  <form id="fNoEntro" method="dialog" novalidate>
+    <h2>Couldn't get in</h2>
+    <label for="neMotivo">Reason</label>
+    <select id="neMotivo"><option>No key / lockbox problem</option><option>Guest still inside</option><option>Wrong door code</option><option>Other</option></select>
+    <label for="neDetalle">Details (optional)</label>
+    <input id="neDetalle" autocomplete="off">
+    <div id="neMsg"></div>
+    <button class="btn" id="neGo">Send to my leader</button>
+    <button type="button" class="btn ghost" id="neCancel">Cancel</button>
+  </form>
+</dialog>
+
+<dialog id="dScan">
+  <h2 id="scTitulo">Scan the QR</h2>
+  <div id="scMsg"></div>
+  <video id="scVideo" playsinline muted autoplay></video>
+  <label class="subir">Take a photo of the QR instead<input type="file" accept="image/*" capture="environment" id="scFoto"></label>
+  <button class="btn ghost" id="scOtra" hidden>Try again</button>
+  <button class="btn ghost danger" id="scSin">Can't scan</button>
+  <button class="btn ghost" id="scCancel">Cancel</button>
+</dialog>
+
+<dialog id="dSinQR">
+  <h2 id="sqTitulo">Start without QR?</h2>
+  <p id="sqTexto">Use this only if the sticker is missing or broken. Your leader will see that this cleaning started <b>without QR</b>.</p>
+  <div id="sqMsg"></div>
+  <button class="btn" id="sqGo">Start without QR</button>
+  <button class="btn ghost" id="sqCancel">Cancel</button>
+</dialog>
+
+<dialog id="dVer">
+  <h2 id="vTitulo"></h2>
+  <div id="vCuerpo"><p class="center">…</p></div>
+  <button class="btn ghost" id="vCerrar">Cerrar</button>
+</dialog>
+
+<div id="print" aria-hidden="true"></div>
+
+<div id="toast" aria-live="assertive"></div>
+
+<dialog id="dBorrar">
+  <h2>Borrar todos los datos de prueba</h2>
+  <p>Se borran <b>todas</b> las propiedades y checkouts marcados como TEST. Los datos reales no se tocan.</p>
+  <label for="bConf">Escribe <b>BORRAR</b> para confirmar</label>
+  <input id="bConf" autocomplete="off" autocapitalize="characters">
+  <div id="bMsg"></div>
+  <button class="btn danger ghost" id="bGo" disabled>Borrar datos TEST</button>
+  <button class="btn ghost" id="bCancel">Cancelar</button>
+</dialog>
+
+<script>
+// ── Configuracion (publica por diseno: la seguridad la dan las reglas RLS) ──
+const SUPABASE_URL = 'https://zxsiantglodsqqvigndk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_f8nqvfRG75TZLMClqT2uZw_mch9Qcid';
+
+const T = {
+  en: { hello:'Hello', dept:'Department', level:'Level', zone:'Zone', all:'All',
+        lv:{operador:'Field staff', lider:'Team leader', operacion:'Operations'},
+        ready:'Your account works. Your tasks will appear here when the pilot starts.',
+        people:'People you can see', out:'Sign out', active:'active', inactive:'disabled',
+        newPass:'Choose your new password', newPassSub:'You are using a temporary password. Choose your own to continue.',
+        pass1:'New password', pass2:'Repeat the password', save:'Save password',
+        short:'At least 8 characters.', diff:'The two passwords do not match.' },
+  es: { hello:'Hola', dept:'Departamento', level:'Nivel', zone:'Zona', all:'Todas',
+        lv:{operador:'Operador', lider:'Líder', operacion:'Operación'},
+        ready:'Tu cuenta funciona. Tus tareas aparecerán aquí cuando arranque el piloto.',
+        people:'Personas que puedes ver', out:'Salir', active:'activa', inactive:'desactivada',
+        newPass:'Elige tu nueva contraseña', newPassSub:'Estás usando una contraseña temporal. Elige la tuya para continuar.',
+        pass1:'Nueva contraseña', pass2:'Repite la contraseña', save:'Guardar contraseña',
+        short:'Mínimo 8 caracteres.', diff:'Las dos contraseñas no coinciden.' }
+};
+
+const app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let sb = null, perfil = null, genteVista = [], pasosCache = null;
+
+// ── Todo el acceso a Supabase pasa por aqui ──
+const db = {
+  async entrar(correo, clave){
+    const { error } = await sb.auth.signInWithPassword({ email: correo.trim(), password: clave });
+    if (error) return { ok:false, msg: /fetch|network/i.test(error.message)
+      ? 'No connection. Check your internet. · Sin conexión.'
+      : 'Wrong email or password. · Correo o contraseña incorrectos.' };
+    return { ok:true };
+  },
+  async miPerfil(){
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return null;
+    const { data } = await sb.from('perfiles').select('*').eq('id', user.id).maybeSingle();
+    return data;
+  },
+  async personas(){
+    const { data } = await sb.from('perfiles').select('id,nombre,departamento,nivel,zona,idioma,activo').order('departamento').order('nombre');
+    return data || [];
+  },
+  async cambiarClave(nueva){
+    const { error } = await sb.auth.updateUser({ password: nueva });
+    if (error) return { ok:false, msg: error.message };
+    const r = await sb.rpc('clave_cambiada');
+    return r.error ? { ok:false, msg: r.error.message } : { ok:true };
+  },
+  async crearCuenta(datos){
+    const { data, error } = await sb.functions.invoke('crear-cuenta', { body: datos });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch (_) {}
+      return { ok:false, msg };
+    }
+    return data;
+  },
+  async gestionar(accion, id){
+    const { data, error } = await sb.functions.invoke('gestionar-cuenta', { body: { accion, id } });
+    if (error) {
+      let msg = error.message;
+      try { msg = (await error.context.json()).error || msg; } catch (_) {}
+      return { ok:false, msg };
+    }
+    return data;
+  },
+  async propiedades(){
+    const { data, error } = await sb.from('propiedades').select('*').order('codigo');
+    return error ? [] : data;
+  },
+  async guardarPropiedad(datos, id){
+    const q = id ? sb.from('propiedades').update(datos).eq('id', id) : sb.from('propiedades').insert(datos);
+    const { error } = await q;
+    if (!error) return { ok:true };
+    return { ok:false, msg: error.code === '23505' ? 'Ese código ya existe.' : error.message };
+  },
+  async checkoutsDia(fecha){
+    const { data, error } = await sb.from('checkouts')
+      .select('id,hora_salida,hora_entrada,prioritario,es_prueba,propiedades(codigo,nombre,pueblo)')
+      .eq('fecha', fecha);
+    if (error) return [];
+    return data.sort((a, b) => (b.prioritario - a.prioritario) || a.hora_salida.localeCompare(b.hora_salida));
+  },
+  async cargarCheckouts(fecha, texto, confirmar){
+    const { data, error } = await sb.rpc('cargar_checkouts', { p_fecha: fecha, p_texto: texto, p_confirmar: confirmar });
+    return error ? { error: error.message } : data;
+  },
+  async generarDia(fecha){
+    const { data, error } = await sb.rpc('generar_dia_prueba', { p_fecha: fecha });
+    return error ? { error: error.message } : { n: data };
+  },
+  async borrarPrueba(){
+    const { data, error } = await sb.rpc('borrar_datos_prueba');
+    return error ? { error: error.message } : data;
+  },
+  async rpc(nombre, args){
+    const { data, error } = await sb.rpc(nombre, args || {});
+    if (error) return { error: error.message };
+    avisar(nombre, args || {}, data);
+    return { data };
+  },
+  async limpiezasDia(fecha){
+    const { data, error } = await sb.from('limpiezas')
+      .select('id,estado,tipo,orden,publicada,asignada_a,motivo_no_entrar,inicio,fin,inicio_qr,fin_qr,cierre,personas,checklist,fotos_cierre(sala),propiedades(codigo,nombre,pueblo),checkouts(hora_salida,hora_entrada)')
+      .eq('fecha', fecha);
+    return error ? [] : data;
+  },
+  async pendientesDia(fecha, tipo){
+    let q = sb.from('pendientes').select('id,tipo,detalle,cantidad,estado,prioritario,creado_en,propiedades(codigo,nombre,pueblo)').eq('fecha', fecha);
+    if (tipo) q = q.eq('tipo', tipo);
+    const { data, error } = await q;
+    if (error) return [];
+    return data.sort((a, b) => (b.prioritario - a.prioritario) || a.creado_en.localeCompare(b.creado_en));
+  },
+  async cleaners(){
+    const { data } = await sb.from('perfiles').select('id,nombre,zona').eq('departamento', 'Limpieza').eq('nivel', 'operador').eq('activo', true).order('nombre');
+    return data || [];
+  },
+  async pasosObligatorios(){
+    if (pasosCache) return pasosCache;
+    const { data, error } = await sb.from('checklist_pasos').select('id,tipo').eq('activo', true).eq('obligatorio', true);
+    if (error) return {};
+    pasosCache = {};
+    data.forEach(p => (pasosCache[p.tipo] = pasosCache[p.tipo] || []).push(String(p.id)));
+    return pasosCache;
+  },
+  async subirFoto(id, sala, blob){
+    const ruta = `${id}/${sala}.jpg`;
+    const up = await sb.storage.from('fotos-cierre').upload(ruta, blob, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) return { error: /fetch|network/i.test(up.error.message) ? 'No connection. Try again.' : up.error.message };
+    return db.rpc('registrar_foto', { p_id: id, p_sala: sala, p_ruta: ruta });
+  },
+  async fotosUrl(rutas){
+    if (!rutas.length) return [];
+    const { data, error } = await sb.storage.from('fotos-cierre').createSignedUrls(rutas, 3600);
+    return error ? [] : data;
+  },
+  async salir(){
+    try { const s = await miSuscripcion(); if (s) await sb.rpc('borrar_suscripcion', { p_endpoint: s.endpoint }); } catch (_) {}
+    return sb.auth.signOut();
+  }
+};
+
+// ── Pantallas ──
+function pintarLogin(msg){
+  app.innerHTML = `
+    <form class="card" id="fLogin" novalidate>
+      <h1>Sign in · Entrar</h1>
+      <p class="sub">Use the email and password Operations gave you.<br><span class="tag">Usa el correo y la contraseña que te dio Operación.</span></p>
+      <label for="mail">Email · Correo</label>
+      <input id="mail" type="email" autocomplete="username" inputmode="email" required>
+      <label for="pass">Password · Contraseña</label>
+      <input id="pass" type="password" autocomplete="current-password" required>
+      <button class="btn" id="go">Sign in · Entrar</button>
+      ${msg ? `<div class="msg err" role="alert">${esc(msg)}</div>` : ''}
+      <button type="button" class="link" id="forgot">Forgot your password? · ¿Olvidaste tu contraseña?</button>
+    </form>`;
+  document.getElementById('forgot').onclick = () => document.getElementById('help').showModal();
+  document.getElementById('fLogin').onsubmit = async e => {
+    e.preventDefault();
+    const correo = document.getElementById('mail').value, clave = document.getElementById('pass').value;
+    if (!correo.trim() || !clave) return pintarLogin('Write your email and password. · Escribe correo y contraseña.');
+    const b = document.getElementById('go'); b.disabled = true; b.textContent = '…';
+    const r = await db.entrar(correo, clave);
+    if (!r.ok) return pintarLogin(r.msg);
+    arrancar();
+  };
+}
+
+function pintarCambioClave(msg){
+  const t = T[perfil.idioma] || T.en;
+  app.innerHTML = `
+    <form class="card" id="fClave" novalidate>
+      <h1>${t.newPass}</h1>
+      <p class="sub">${t.newPassSub}</p>
+      <label for="p1">${t.pass1}</label>
+      <input id="p1" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="p2">${t.pass2}</label>
+      <input id="p2" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="btn" id="go">${t.save}</button>
+      ${msg ? `<div class="msg err" role="alert">${esc(msg)}</div>` : ''}
+      <button type="button" class="link" id="out">${t.out}</button>
+    </form>`;
+  document.getElementById('out').onclick = async () => { await db.salir(); };
+  document.getElementById('fClave').onsubmit = async e => {
+    e.preventDefault();
+    const a = document.getElementById('p1').value, b2 = document.getElementById('p2').value;
+    if (a.length < 8) return pintarCambioClave(t.short);
+    if (a !== b2) return pintarCambioClave(t.diff);
+    const b = document.getElementById('go'); b.disabled = true; b.textContent = '…';
+    const r = await db.cambiarClave(a);
+    if (!r.ok) return pintarCambioClave(r.msg);
+    arrancar();
+  };
+}
+
+async function pintarCuenta(){
+  const t = T[perfil.idioma] || T.en;
+  const nombre = perfil.nombre.split(' ')[0];
+  let lista = '';
+  if (perfil.nivel !== 'operador') {
+    const gente = await db.personas();
+    genteVista = gente;
+    const crear = perfil.nivel === 'operacion' ? '<button class="btn sm" id="btnNueva">+ Crear cuenta</button>' : '';
+    lista = `<section class="card"><div class="head"><h2>${t.people} (${gente.length})</h2>${crear}</div><ul class="people">${
+      gente.map(p => {
+        const dentro = `<span class="${p.activo ? '' : 'off'}">${esc(p.nombre)}</span>
+          <span class="tag">${esc(p.departamento)} · ${esc(t.lv[p.nivel])}${p.zona ? ' · ' + esc(p.zona) : ''}${p.activo ? '' : ' · ' + t.inactive}</span>`;
+        // Operacion puede tocar a cualquiera menos a si mismo
+        return perfil.nivel === 'operacion' && p.id !== perfil.id
+          ? `<li class="click"><button class="pbtn" data-id="${esc(p.id)}">${dentro}</button></li>`
+          : `<li>${dentro}</li>`;
+      }).join('')
+    }</ul></section>`;
+  }
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <h1>${t.hello}, ${esc(nombre)}</h1>
+      <p class="sub">${t.ready}</p>
+      <dl>
+        <dt>${t.dept}</dt><dd>${esc(perfil.departamento)}</dd>
+        <dt>${t.level}</dt><dd>${esc(t.lv[perfil.nivel])}</dd>
+        <dt>${t.zone}</dt><dd>${esc(perfil.zona || t.all)}</dd>
+      </dl>
+      <button class="btn ghost" id="out">${t.out}</button>
+    </section>${cajaAvisos()}${lista}`;
+  document.getElementById('out').onclick = async () => { await db.salir(); };
+  pintarAvisos();
+  bindNav();
+  const bn = document.getElementById('btnNueva');
+  if (bn) bn.onclick = abrirNueva;
+  if (perfil.nivel === 'operacion') {
+    const porId = {};
+    genteVista.forEach(p => porId[p.id] = p);
+    document.querySelectorAll('.pbtn').forEach(b => b.onclick = () => abrirPersona(porId[b.dataset.id]));
+  }
+}
+
+// ── Gestionar una cuenta (solo Operacion) ──
+function abrirPersona(p){
+  if (!p) return;
+  const ocupado = (b, txt) => { b.disabled = true; b.textContent = txt; };
+  const err = m => { $('pMsg').innerHTML = `<div class="msg err" role="alert">${esc(m)}</div>`; pintarBotones(); };
+  function pintarBotones(){
+    $('pReset').disabled = !p.activo; $('pReset').textContent = 'Resetear contraseña';
+    $('pEstado').disabled = false;
+    $('pEstado').textContent = p.activo ? 'Desactivar cuenta' : 'Reactivar cuenta';
+    $('pEstado').classList.toggle('danger', p.activo);
+    $('pEstado').dataset.confirmar = '';
+  }
+  $('pNombre').textContent = p.nombre;
+  $('pDatos').textContent = `${p.departamento} · ${T.es.lv[p.nivel]}${p.zona ? ' · ' + p.zona : ''} · ${p.activo ? 'activa' : 'desactivada'}`;
+  $('pMsg').innerHTML = p.activo ? '' : '<div class="msg err">Esta cuenta está desactivada: no puede entrar. Su historial se conserva.</div>';
+  pintarBotones();
+
+  $('pReset').onclick = async () => {
+    ocupado($('pReset'), 'Reseteando…');
+    const r = await db.gestionar('resetear', p.id);
+    if (!r || !r.ok) return err((r && (r.msg || r.error)) || 'No se pudo resetear.');
+    $('dPersona').close();
+    mostrarClave({ nombre: r.nombre, correo: r.correo, idioma: r.idioma }, r.clave, 'Contraseña reseteada');
+  };
+  $('pEstado').onclick = async () => {
+    const b = $('pEstado');
+    // Desactivar pide un segundo toque para evitar errores
+    if (p.activo && !b.dataset.confirmar) {
+      b.dataset.confirmar = '1';
+      b.textContent = '¿Seguro? Toca otra vez para desactivar';
+      $('pMsg').innerHTML = '<div class="msg err">Antes de desactivar, revisa si tiene llaves u otras cosas sin devolver. Su historial no se borra.</div>';
+      return;
+    }
+    const accion = p.activo ? 'desactivar' : 'reactivar';
+    ocupado(b, p.activo ? 'Desactivando…' : 'Reactivando…');
+    const r = await db.gestionar(accion, p.id);
+    if (!r || !r.ok) return err((r && (r.msg || r.error)) || 'No se pudo completar.');
+    $('dPersona').close();
+    pintarInicio();
+  };
+  $('pCerrar').onclick = () => $('dPersona').close();
+  $('dPersona').showModal();
+}
+
+// ── Crear cuenta (solo Operacion) ──
+const APP_URL = 'https://ivanyesith-spec.github.io/opsflow/';
+const $ = id => document.getElementById(id);
+function abrirNueva(){
+  $('fNueva').reset(); $('nMsg').innerHTML = ''; $('nGo').disabled = false; $('nGo').textContent = 'Crear cuenta';
+  $('dNueva').showModal(); $('nNombre').focus();
+}
+$('nCancel').onclick = () => $('dNueva').close();
+$('fNueva').oninput = () => { $('nMsg').innerHTML = ''; };
+// Ayuda: Operacion va con Operacion; lideres y Operacion no necesitan zona
+$('nNivel').onchange = () => {
+  const n = $('nNivel').value;
+  if (n === 'operacion') $('nDep').value = 'Operación';
+  if (n !== 'operador') $('nZona').value = '';
+  else if (!$('nZona').value) $('nZona').value = 'Norte';
+  $('nIdioma').value = n === 'operador' ? 'en' : 'es';
+};
+$('nDep').onchange = () => { if ($('nDep').value === 'Operación') { $('nNivel').value = 'operacion'; $('nNivel').onchange(); } };
+$('fNueva').onsubmit = async e => {
+  e.preventDefault();
+  const datos = { nombre:$('nNombre').value.trim(), correo:$('nCorreo').value.trim(), departamento:$('nDep').value,
+                  nivel:$('nNivel').value, zona:$('nZona').value || null, idioma:$('nIdioma').value };
+  const err = m => { $('nMsg').innerHTML = `<div class="msg err" role="alert">${esc(m)}</div>`; $('nGo').disabled = false; $('nGo').textContent = 'Crear cuenta'; };
+  if (datos.nombre.length < 2) return err('Falta el nombre.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.correo)) return err('El correo no es válido.');
+  if (datos.nivel === 'operador' && !datos.zona) return err('Un operador necesita zona.');
+  $('nGo').disabled = true; $('nGo').textContent = 'Creando…';
+  const r = await db.crearCuenta(datos);
+  if (!r || !r.ok) return err((r && r.msg) || (r && r.error) || 'No se pudo crear la cuenta.');
+  $('dNueva').close();
+  mostrarClave(datos, r.clave);
+  pintarInicio();
+};
+function mostrarClave(d, clave, titulo){
+  $('cTitulo').textContent = titulo || 'Cuenta creada';
+  $('cQuien').textContent = `${d.nombre} · ${d.correo}`;
+  $('cClave').textContent = clave;
+  const texto = d.idioma === 'es'
+    ? `Hola ${d.nombre.split(' ')[0]}, esta es tu cuenta de OpsFlow.\nEnlace: ${APP_URL}\nCorreo: ${d.correo}\nContraseña temporal: ${clave}\nAl entrar te pedirá elegir tu propia contraseña.`
+    : `Hi ${d.nombre.split(' ')[0]}, this is your OpsFlow account.\nLink: ${APP_URL}\nEmail: ${d.correo}\nTemporary password: ${clave}\nWhen you sign in, it will ask you to choose your own password.`;
+  $('cCopiar').textContent = 'Copiar mensaje para WhatsApp';
+  $('cCopiar').onclick = async () => {
+    try { await navigator.clipboard.writeText(texto); $('cCopiar').textContent = 'Copiado ✓'; }
+    catch (_) { prompt('Copia este mensaje:', texto); }
+  };
+  $('cListo').onclick = () => { $('cClave').textContent = ''; $('dClave').close(); };
+  $('dClave').showModal();
+}
+
+// ── Navegacion (lideres y Operacion) ──
+let vista = 'inicio';
+function tabsDe(){
+  const t = [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
+  const op = perfil.nivel === 'operacion', lider = perfil.nivel === 'lider', dep = perfil.departamento;
+  if (op || (lider && dep === 'Limpieza')) t.push(['asignar', 'Asignar'], ['seguimiento', 'Seguimiento']);
+  if (op || (lider && dep === 'Linens')) t.push(['linens', 'Linens']);
+  if (op || (lider && dep === 'Bodega')) t.push(['bodega', 'Bodega']);
+  if (op || (lider && dep === 'Limpieza')) t.push(['tiempos', 'Tiempos']);
+  if (op) t.push(['tablero', 'Tablero'], ['propiedades', 'Propiedades']);
+  return t;
+}
+const puedeCargar = () => perfil.nivel === 'operacion' || (perfil.nivel === 'lider' && perfil.departamento === 'Limpieza');
+function navHTML(){
+  if (perfil.nivel === 'operador') return '';
+  const tabs = tabsDe();
+  return `<nav class="tabs" aria-label="Secciones">${tabs.map(([k, l]) =>
+    `<button data-vista="${k}" ${vista === k ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</nav>`;
+}
+function bindNav(){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => { vista = b.dataset.vista; pintarInicio(); });
+}
+function pintarInicio(){
+  if (perfil.nivel === 'operador') {
+    vista = 'inicio';
+    document.querySelector('.wrap').classList.remove('wide');
+    if (perfil.departamento === 'Limpieza') return pintarMiDia();
+    if (perfil.departamento === 'Drivers') return pintarRuta();
+    return pintarCuenta();
+  }
+  if (!tabsDe().some(([k]) => k === vista)) vista = 'inicio';
+  document.querySelector('.wrap').classList.toggle('wide', vista !== 'inicio');
+  if (vista === 'checkouts') return pintarCheckouts();
+  if (vista === 'propiedades') return pintarPropiedades();
+  if (vista === 'asignar') return pintarAsignar();
+  if (vista === 'linens') return pintarLinens();
+  if (vista === 'bodega') return pintarBodega();
+  if (vista === 'tablero') return pintarTablero();
+  if (vista === 'tiempos') return pintarTiempos();
+  if (vista === 'seguimiento') return pintarSeguimiento();
+  return pintarCuenta();
+}
+
+// ── Checkouts del dia ──
+const hoyMas = d => { const x = new Date(); x.setDate(x.getDate() + d); return x.toLocaleDateString('sv-SE'); };
+let fechaCk = hoyMas(1);
+const hm = t => (t || '').slice(0, 5);
+const fmtF = f => { const [y, m, d] = f.split('-'); return `${d}/${m}/${y}`; };
+async function pintarCheckouts(){
+  const lista = await db.checkoutsDia(fechaCk);
+  const prio = lista.filter(c => c.prioritario).length;
+  const cargar = puedeCargar() ? `
+    <section class="card">
+      <h2>Cargar checkouts</h2>
+      <p class="sub">Una línea por checkout: <span class="cod">CÓDIGO 10:00</span> o, si hay check-in ese día, <span class="cod">CÓDIGO 10:00 15:00</span>.</p>
+      <label for="ckTexto">Checkouts del ${esc(fmtF(fechaCk))}</label>
+      <textarea id="ckTexto" spellcheck="false" autocapitalize="characters" placeholder="TEST-N01 10:00&#10;TEST-N02 09:30 15:00"></textarea>
+      <button class="btn" id="ckRevisar">Revisar</button>
+      <div id="ckRes"></div>
+    </section>` : '';
+  const prueba = perfil.nivel === 'operacion' ? `
+    <section class="card">
+      <h2>Modo prueba</h2>
+      <p class="sub">Solo para simulacros. Todo lo que se crea aquí lleva la marca TEST.</p>
+      <button class="btn ghost" id="ckGenerar">Generar día de prueba para el ${esc(fmtF(fechaCk))}</button>
+      <button class="btn danger ghost" id="ckBorrar">Borrar todos los datos TEST</button>
+      <div id="ckPruebaMsg"></div>
+    </section>` : '';
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="head"><h2>Checkouts</h2>
+        <input id="ckFecha" type="date" value="${esc(fechaCk)}" aria-label="Fecha" style="width:auto"></div>
+      <div class="stats"><span><b>${lista.length}</b> checkouts</span><span><b>${prio}</b> con check-in el mismo día</span></div>
+      ${lista.length ? `<ul class="lista">${lista.map(c => `<li><div class="fila">
+          <span><span class="cod">${esc(c.propiedades?.codigo)}</span> ${c.es_prueba ? '<span class="pill test">TEST</span>' : ''}<br>
+            <b>${esc(c.propiedades?.nombre)}</b> <span class="tag">· ${esc(c.propiedades?.pueblo)}</span></span>
+          <span class="hora">Sale ${hm(c.hora_salida)}${c.prioritario ? `<br><span class="pill prio">Check-in ${hm(c.hora_entrada)}</span>` : ''}</span>
+        </div></li>`).join('')}</ul>`
+        : '<p class="empty">No hay checkouts cargados para este día.</p>'}
+      ${puedeCargar() ? '' : '<p class="tag">Solo lectura: los carga Operación o el líder de limpieza.</p>'}
+    </section>${cargar}${prueba}`;
+  bindNav();
+  $('ckFecha').onchange = e => { if (e.target.value) { fechaCk = e.target.value; pintarCheckouts(); } };
+  if (puedeCargar()) {
+    $('ckRevisar').onclick = () => revisarCheckouts();
+    $('ckTexto').oninput = () => { $('ckRes').innerHTML = ''; };
+  }
+  if (perfil.nivel === 'operacion') {
+    $('ckGenerar').onclick = async () => {
+      const b = $('ckGenerar'); b.disabled = true; b.textContent = 'Generando…';
+      const r = await db.generarDia(fechaCk);
+      if (r.error) { $('ckPruebaMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; b.disabled = false; return; }
+      pintarCheckouts();
+    };
+    $('ckBorrar').onclick = abrirBorrar;
+  }
+}
+function lineas(arr, conHora){
+  return arr.map(x => `<li><span class="cod">${esc(x.codigo)}</span> ${conHora ? `sale ${esc(x.salida)}${x.entrada ? ` · check-in ${esc(x.entrada)}` : ''}` : ''}</li>`).join('');
+}
+async function revisarCheckouts(){
+  const texto = $('ckTexto').value;
+  if (!texto.trim()) { $('ckRes').innerHTML = '<div class="msg err" role="alert">Pega al menos una línea.</div>'; return; }
+  const b = $('ckRevisar'); b.disabled = true; b.textContent = 'Revisando…';
+  const r = await db.cargarCheckouts(fechaCk, texto, false);
+  b.disabled = false; b.textContent = 'Revisar';
+  if (r.error) { $('ckRes').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; return; }
+  const buenas = r.cargados.length + r.actualizados.length;
+  $('ckRes').innerHTML = `<div class="res">
+    <p class="stats"><span><b>${r.cargados.length}</b> nuevos</span><span><b>${r.actualizados.length}</b> actualizados</span><span><b>${r.rechazados.length}</b> rechazados</span></p>
+    ${r.rechazados.length ? `<h3>Rechazados (no se guardan)</h3><ul>${r.rechazados.map(x => `<li>Línea ${x.linea}: <span class="cod">${esc(x.texto)}</span> — ${esc(x.motivo)}</li>`).join('')}</ul>` : ''}
+    ${r.cargados.length ? `<h3>Nuevos</h3><ul>${lineas(r.cargados, true)}</ul>` : ''}
+    ${r.actualizados.length ? `<h3>Se actualizan</h3><ul>${lineas(r.actualizados, true)}</ul>` : ''}
+    ${buenas ? `<button class="btn" id="ckConfirmar">Confirmar y guardar ${buenas}</button>` : '<div class="msg err">No hay ninguna línea válida para guardar.</div>'}
+  </div>`;
+  if (buenas) $('ckConfirmar').onclick = async () => {
+    const c = $('ckConfirmar'); c.disabled = true; c.textContent = 'Guardando…';
+    const r2 = await db.cargarCheckouts(fechaCk, texto, true);
+    if (r2.error) { $('ckRes').innerHTML = `<div class="msg err" role="alert">${esc(r2.error)}</div>`; return; }
+    await pintarCheckouts();
+    $('ckRes').innerHTML = `<div class="msg ok" role="status">Guardados ${r2.cargados.length + r2.actualizados.length} checkouts.</div>`;
+  };
+}
+function abrirBorrar(){
+  $('bConf').value = ''; $('bMsg').innerHTML = ''; $('bGo').disabled = true; $('bGo').textContent = 'Borrar datos TEST';
+  $('bConf').oninput = () => { $('bGo').disabled = $('bConf').value.trim().toUpperCase() !== 'BORRAR'; };
+  $('bCancel').onclick = () => $('dBorrar').close();
+  $('bGo').onclick = async () => {
+    $('bGo').disabled = true; $('bGo').textContent = 'Borrando…';
+    const r = await db.borrarPrueba();
+    if (r.error) { $('bMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; $('bGo').textContent = 'Borrar datos TEST'; return; }
+    $('dBorrar').close();
+    await pintarInicio();
+    const m = $('ckPruebaMsg');
+    if (m) m.innerHTML = `<div class="msg ok" role="status">Borrados ${r.propiedades} propiedades y ${r.checkouts} checkouts de prueba.</div>`;
+  };
+  $('dBorrar').showModal(); $('bConf').focus();
+}
+
+// ── Propiedades (solo Operacion) ──
+let filtroTxt = '', filtroPueblo = '', propsCache = [];
+async function pintarPropiedades(){
+  propsCache = await db.propiedades();
+  const pueblos = [...new Set(propsCache.map(p => p.pueblo))].sort();
+  if (filtroPueblo && !pueblos.includes(filtroPueblo)) filtroPueblo = '';
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="head"><h2>Propiedades (${propsCache.length})</h2><span class="btns" style="margin:0"><button class="btn sm ghost" id="prPegatinas">Pegatinas QR</button><button class="btn sm" id="prNueva">+ Nueva</button></span></div>
+      <div class="row3">
+        <div><label for="prBuscar">Buscar</label><input id="prBuscar" type="search" placeholder="Código o nombre" value="${esc(filtroTxt)}"></div>
+        <div><label for="prFiltro">Pueblo</label><select id="prFiltro"><option value="">Todos</option>${pueblos.map(x => `<option ${x === filtroPueblo ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
+      </div>
+      <ul class="lista" id="prLista"></ul>
+    </section>`;
+  bindNav();
+  const pintarLista = () => {
+    const q = filtroTxt.trim().toLowerCase();
+    const vis = propsCache.filter(p => (!filtroPueblo || p.pueblo === filtroPueblo) &&
+      (!q || p.codigo.toLowerCase().includes(q) || p.nombre.toLowerCase().includes(q)));
+    $('prLista').innerHTML = vis.length ? vis.map(p => `<li><button class="fila" data-id="${esc(p.id)}">
+        <span><span class="cod">${esc(p.codigo)}</span> ${p.es_prueba ? '<span class="pill test">TEST</span>' : ''} ${p.activa ? '' : '<span class="pill off">Desactivada</span>'}<br>
+          <b>${esc(p.nombre)}</b> <span class="tag">· ${esc(p.pueblo)}</span></span>
+        <span class="tag" style="text-align:right">${(n => n + (n === 1 ? ' cama' : ' camas'))(p.camas_dobles + p.camas_indiv + p.sofas_cama)}<br>${p.banos} baño${p.banos === 1 ? '' : 's'}</span>
+      </button></li>`).join('') : '<li class="empty">Ninguna propiedad coincide.</li>';
+    document.querySelectorAll('#prLista .fila').forEach(b => b.onclick = () => abrirProp(propsCache.find(p => p.id === b.dataset.id)));
+  };
+  pintarLista();
+  $('prBuscar').oninput = e => { filtroTxt = e.target.value; pintarLista(); };
+  $('prFiltro').onchange = e => { filtroPueblo = e.target.value; pintarLista(); };
+  $('prNueva').onclick = () => abrirProp(null);
+  $('prPegatinas').onclick = () => imprimirQR();
+}
+function abrirProp(p){
+  const nueva = !p;
+  p = p || { codigo:'', nombre:'', pueblo:'', zona:'Norte', direccion:'', mapa_url:'', camas_dobles:1, camas_indiv:0, sofas_cama:0, banos:1, notas:'', activa:true, es_prueba:true };
+  $('prTitulo').textContent = nueva ? 'Nueva propiedad' : p.codigo;
+  $('prCodigo').value = p.codigo; $('prCodigo').readOnly = !nueva;
+  $('prNombre').value = p.nombre; $('prPueblo').value = p.pueblo; $('prZona').value = p.zona;
+  $('prDir').value = p.direccion || ''; $('prMapa').value = p.mapa_url || '';
+  $('prDobles').value = p.camas_dobles; $('prIndiv').value = p.camas_indiv; $('prSofas').value = p.sofas_cama; $('prBanos').value = p.banos;
+  $('prNotas').value = p.notas || ''; $('prActiva').checked = p.activa; $('prPrueba').checked = p.es_prueba;
+  $('prMsg').innerHTML = ''; $('prGo').disabled = false; $('prGo').textContent = 'Guardar';
+  $('prCancel').onclick = () => $('dProp').close();
+  $('prQR').hidden = nueva || perfil.nivel !== 'operacion';
+  $('prQR').textContent = 'Regenerar QR'; $('prQR').disabled = false;
+  delete $('prQR').dataset.seguro;
+  $('prQR').onclick = async () => {
+    const b = $('prQR');
+    if (!b.dataset.seguro) { b.dataset.seguro = '1'; b.textContent = 'Pulsa otra vez: la pegatina actual dejará de valer'; return; }
+    delete b.dataset.seguro; b.disabled = true;
+    const r = await db.rpc('regenerar_qr', { p_propiedad: p.id });
+    if (r.error) { $('prMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; b.disabled = false; b.textContent = 'Regenerar QR'; return; }
+    $('dProp').close(); toast('QR nuevo. Imprime y pega la pegatina nueva.', 'ok'); imprimirQR(p.codigo);
+  };
+  $('fProp').oninput = () => { $('prMsg').innerHTML = ''; };
+  $('fProp').onsubmit = async e => {
+    e.preventDefault();
+    const num = (id, max) => { const n = parseInt($(id).value, 10); return Number.isFinite(n) && n >= 0 && n <= max ? n : null; };
+    const datos = {
+      nombre: $('prNombre').value.trim(), pueblo: $('prPueblo').value.trim(), zona: $('prZona').value,
+      direccion: $('prDir').value.trim() || null, mapa_url: $('prMapa').value.trim() || null,
+      camas_dobles: num('prDobles', 10), camas_indiv: num('prIndiv', 10), sofas_cama: num('prSofas', 5), banos: num('prBanos', 10),
+      notas: $('prNotas').value.trim() || null, activa: $('prActiva').checked, es_prueba: $('prPrueba').checked
+    };
+    const err = m => { $('prMsg').innerHTML = `<div class="msg err" role="alert">${esc(m)}</div>`; $('prGo').disabled = false; $('prGo').textContent = 'Guardar'; };
+    if (nueva) {
+      datos.codigo = $('prCodigo').value.trim().toUpperCase();
+      if (!/^\S{2,30}$/.test(datos.codigo)) return err('El código debe tener entre 2 y 30 caracteres, sin espacios.');
+    }
+    if (!datos.nombre) return err('Falta el nombre.');
+    if (!datos.pueblo) return err('Falta el pueblo.');
+    if ([datos.camas_dobles, datos.camas_indiv, datos.sofas_cama, datos.banos].includes(null)) return err('Revisa camas y baños: números de 0 a 10 (sofás cama de 0 a 5).');
+    $('prGo').disabled = true; $('prGo').textContent = 'Guardando…';
+    const r = await db.guardarPropiedad(datos, nueva ? null : p.id);
+    if (!r.ok) return err(r.msg);
+    $('dProp').close();
+    pintarPropiedades();
+  };
+  $('dProp').showModal();
+}
+
+// ── Utilidades de la cadena ──
+const ESTADO_ES = { sin_asignar:'Sin asignar', asignada:'Asignada', en_curso:'En curso', terminada:'Terminada', no_pude_entrar:'No pudo entrar',
+                    abierto:'Abierto', preparado:'Preparado', entregado:'Entregado', cerrado:'Cerrado' };
+const ESTADO_EN = { asignada:'To do', en_curso:'In progress', terminada:'Done', no_pude_entrar:"Couldn't get in",
+                    abierto:'Sent', preparado:'Ready at linens', entregado:'Delivered', cerrado:'Closed' };
+const TIPOS_L = [['normal','Normal'],['refresh','Refresh'],['deep','Deep cleaning'],['huesped_dentro','Huésped dentro'],['foto','Para foto'],['post_mantenimiento','Post mantenimiento']];
+const pill = (estado, txt) => `<span class="pill e-${esc(estado)}">${esc(txt)}</span>`;
+let toastT;
+function toast(msg, tipo){
+  $('toast').innerHTML = `<div class="msg ${tipo === 'ok' ? 'ok' : 'err'}" role="status">${esc(msg)}</div>`;
+  clearTimeout(toastT); toastT = setTimeout(() => { $('toast').innerHTML = ''; }, 4000);
+}
+async function accion(nombre, args, okMsg){
+  const r = await db.rpc(nombre, args);
+  if (r.error) { toast(r.error); return false; }
+  if (okMsg) toast(okMsg, 'ok');
+  await pintarInicio();
+  return true;
+}
+let fechaCampo = hoyMas(0);
+const fechaBarra = (id, f) => `<input id="${id}" type="date" value="${esc(f)}" aria-label="Fecha / Date">`;
+
+// Refresco automatico cada 30 s (si no hay un dialogo abierto ni se esta escribiendo)
+setInterval(() => {
+  if (!perfil || abierta || document.querySelector('dialog[open]')) return;
+  const a = document.activeElement;
+  if (a && ['INPUT', 'SELECT', 'TEXTAREA'].includes(a.tagName)) return;
+  if (['inicio', 'asignar', 'seguimiento', 'linens', 'bodega', 'tablero'].includes(vista) || perfil.nivel === 'operador') {
+    if (perfil.nivel === 'operador' || vista !== 'inicio') pintarInicio();
+  }
+}, 30000);
+
+// ── Asignar (lider de limpieza y Operacion) ──
+async function pintarAsignar(){
+  const [lims, cls, pends] = await Promise.all([db.limpiezasDia(fechaCk), db.cleaners(), db.pendientesDia(fechaCk)]);
+  lims.sort((a, b) => (a.asignada_a || '').localeCompare(b.asignada_a || '') || (a.orden || 99) - (b.orden || 99)
+                    || (a.propiedades?.codigo || '').localeCompare(b.propiedades?.codigo || ''));
+  const sinAsig = lims.filter(l => l.estado === 'sin_asignar').length;
+  const sinPub = lims.filter(l => l.asignada_a && !l.publicada).length;
+  const nombreDe = id => (cls.find(c => c.id === id) || {}).nombre || '—';
+  const bloqueada = l => !['sin_asignar', 'asignada'].includes(l.estado);
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Asignar limpiezas</h2>${fechaBarra('aFecha', fechaCk)}</div>
+      ${fechaCk !== hoyMas(0) ? `<div class="msg">Estás viendo el <b>${esc(fmtF(fechaCk))}</b>, no hoy. El cleaner verá estas limpiezas en esa fecha.</div>` : ''}
+      <div class="stats"><span><b>${lims.length}</b> limpiezas</span><span><b>${sinAsig}</b> sin asignar</span><span><b>${sinPub}</b> sin publicar</span></div>
+      <button class="btn" id="aPub" ${sinPub ? '' : 'disabled'}>${sinPub ? `Publicar orden (${sinPub})` : (lims.some(l => l.publicada) ? '✓ Todo publicado' : 'Nada por publicar: asigna primero')}</button>
+      <p class="tag">El cleaner solo ve sus limpiezas después de publicar. Si cambias algo, vuelve a publicar. El avance, las fotos y los tiempos están en <b>Seguimiento</b>.</p>
+      ${lims.length ? lims.map(l => `<div class="tarjeta ${l.checkouts?.hora_entrada ? 'prio' : ''}" data-id="${esc(l.id)}">
+          <div class="barra"><span><span class="cod">${esc(l.propiedades?.codigo)}</span> <b>${esc(l.propiedades?.nombre)}</b> <span class="tag">· ${esc(l.propiedades?.pueblo)}</span></span>
+            <span>${pill(l.estado, ESTADO_ES[l.estado])} ${l.asignada_a && !l.publicada ? '<span class="pill">Sin publicar</span>' : ''}</span></div>
+          <div class="tag">Sale ${hm(l.checkouts?.hora_salida)}${l.checkouts?.hora_entrada ? ` · <span class="pill rojo">Check-in ${hm(l.checkouts.hora_entrada)}</span>` : ''}
+            ${l.estado === 'no_pude_entrar' ? ` · <b>Motivo:</b> ${esc(l.motivo_no_entrar)}` : ''}</div>
+          ${bloqueada(l) ? `<p class="tag">Cleaner: <b>${esc(nombreDe(l.asignada_a))}</b> · orden ${l.orden || '—'} · ${esc((TIPOS_L.find(t => t[0] === l.tipo) || [0, l.tipo])[1])}</p>` : `
+          <div class="asig">
+            <select data-f="cleaner" aria-label="Cleaner"><option value="">— Sin asignar —</option>${cls.map(c => `<option value="${esc(c.id)}" ${c.id === l.asignada_a ? 'selected' : ''}>${esc(c.nombre)}${c.zona ? ' · ' + esc(c.zona) : ''}</option>`).join('')}</select>
+            <input data-f="orden" type="number" min="1" max="50" inputmode="numeric" placeholder="Orden" aria-label="Orden" value="${l.orden || ''}">
+            <select data-f="tipo" aria-label="Tipo">${TIPOS_L.map(([k, n]) => `<option value="${k}" ${k === l.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select>
+          </div>`}
+        </div>`).join('') : '<p class="empty">No hay limpiezas este día. Carga los checkouts primero.</p>'}
+    </section>
+    <section class="card">
+      <h2>Pendientes del día (${pends.length})</h2>
+      ${pends.length ? `<ul class="pends">${pends.map(p => `<li><span>${p.prioritario ? '<span class="pill rojo">Check-in</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> ${esc(p.cantidad > 1 ? p.cantidad + ' × ' : '')}${esc(p.detalle)} <span class="tag">(${esc(p.tipo)})</span></span>
+          <span>${pill(p.estado, p.estado === 'entregado' ? 'Esperando Received' : ESTADO_ES[p.estado])}
+          ${p.tipo === 'otro' && p.estado === 'abierto' ? `<button class="btn sm" data-resolver="${esc(p.id)}">Resolver</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">Sin pendientes.</p>'}
+    </section>`;
+  bindNav();
+  $('aFecha').onchange = e => { if (e.target.value) { fechaCk = e.target.value; pintarAsignar(); } };
+  $('aPub').onclick = async () => {
+    const b = $('aPub'); b.disabled = true; b.textContent = 'Publicando…';
+    const r = await db.rpc('publicar_orden', { p_fecha: fechaCk });
+    if (r.error) { toast(r.error); return pintarAsignar(); }
+    toast(`Publicadas ${r.data} limpiezas para el ${fmtF(fechaCk)}.`, 'ok'); pintarAsignar();
+  };
+  document.querySelectorAll('.tarjeta[data-id] .asig').forEach(box => {
+    const id = box.closest('.tarjeta').dataset.id;
+    box.querySelectorAll('select,input').forEach(el => el.onchange = async () => {
+      const cleaner = box.querySelector('[data-f=cleaner]').value || null;
+      let orden = parseInt(box.querySelector('[data-f=orden]').value, 10);
+      if (!cleaner) orden = NaN;
+      if (cleaner && !Number.isFinite(orden)) {
+        orden = 1 + Math.max(0, ...lims.filter(x => x.asignada_a === cleaner && x.id !== id).map(x => x.orden || 0));
+      }
+      const r = await db.rpc('asignar_limpieza', { p_id: id, p_cleaner: cleaner, p_orden: Number.isFinite(orden) ? orden : null, p_tipo: box.querySelector('[data-f=tipo]').value });
+      if (r.error) toast(r.error); else toast('Guardado', 'ok');
+      pintarAsignar();
+    });
+  });
+  document.querySelectorAll('[data-resolver]').forEach(b => b.onclick = () => accion('resolver_pendiente', { p_id: b.dataset.resolver }, 'Pendiente resuelto'));
+}
+
+// ── Linens (lider de linens y Operacion) ──
+async function pintarLinens(){
+  const pends = await db.pendientesDia(fechaCampo, 'linens');
+  const abiertos = pends.filter(p => p.estado === 'abierto');
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
+      ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
+          <div class="barra"><span>${p.prioritario ? '<span class="pill rojo">Check-in hoy</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> <b>${esc(p.propiedades?.nombre)}</b> <span class="tag">· ${esc(p.propiedades?.pueblo)}</span></span>
+            ${pill(p.estado, ESTADO_ES[p.estado])}</div>
+          <p style="margin:6px 0 0"><b>${esc(p.cantidad)} × ${esc(p.detalle)}</b></p>
+          ${p.estado === 'abierto' ? `<button class="btn" data-prep="${esc(p.id)}">Preparado</button>` : ''}
+        </div>`).join('') : '<p class="empty">No hay pendientes de linens este día.</p>'}
+    </section>`;
+  bindNav();
+  $('lFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarLinens(); } };
+  document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
+}
+
+// ── Bodega (lider de bodega y Operacion): utiles que faltan en los aptos ──
+async function pintarBodega(){
+  const pends = await db.pendientesDia(fechaCampo, 'utiles');
+  const abiertos = pends.filter(p => p.estado === 'abierto');
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Bodega · útiles por preparar (${abiertos.length})</h2>${fechaBarra('bFecha', fechaCampo)}</div>
+      <p class="tag">Lo que el cleaner marcó que falta al cerrar el apartamento. Al pulsar <b>Preparado</b> pasa al driver de la zona.</p>
+      ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
+          <div class="barra"><span>${p.prioritario ? '<span class="pill rojo">Check-in hoy</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> <b>${esc(p.propiedades?.nombre)}</b> <span class="tag">· ${esc(p.propiedades?.pueblo)}</span></span>
+            ${pill(p.estado, p.estado === 'cerrado' ? 'Entregado' : ESTADO_ES[p.estado])}</div>
+          <p style="margin:6px 0 0"><b>${esc(p.detalle)}</b></p>
+          ${p.estado === 'abierto' ? `<button class="btn" data-prep="${esc(p.id)}">Preparado</button>` : ''}
+        </div>`).join('') : '<p class="empty">No faltan útiles este día.</p>'}
+    </section>`;
+  bindNav();
+  $('bFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarBodega(); } };
+  document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
+}
+
+// ── Tablero (Operacion) ──
+async function pintarTablero(){
+  const r = await db.rpc('tablero', { p_fecha: fechaCampo });
+  const t = r.data || {};
+  const L = t.limpiezas || {};
+  const tile = (n, txt) => `<div class="tile"><b>${n ?? 0}</b><span>${txt}</span></div>`;
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Tablero del día</h2>${fechaBarra('tFecha', fechaCampo)}</div>
+      ${r.error ? `<div class="msg err">${esc(r.error)}</div>` : `
+      <h3 style="margin:16px 0 0">Limpiezas</h3>
+      <div class="tiles">${tile(L.sin_asignar, 'Sin asignar')}${tile(t.sin_publicar, 'Asignadas sin publicar')}${tile(L.asignada, 'Asignadas')}${tile(L.en_curso, 'En curso')}${tile(L.terminada, 'Terminadas')}${tile(L.no_pude_entrar, 'No pudo entrar')}</div>
+      <h3 style="margin:16px 0 0">Pendientes</h3>
+      <div class="tiles">${tile(t.en_linens, 'Esperando a linens')}${tile(t.en_bodega, 'Esperando a bodega')}${tile(t.en_driver, 'Esperando al driver')}${tile(t.por_recibir, 'Esperando Received')}${tile(t.otros_abiertos, 'Otros sin resolver')}${tile(t.cerrados, 'Cerrados')}${tile(t.minutos_cierre == null ? '—' : t.minutos_cierre + ' min', 'Tiempo medio de cierre')}</div>
+      ${(t.llaves_no || []).length ? `<h3 style="margin:16px 0 0">Llaves NO en el key box</h3><ul class="pends">${t.llaves_no.map(x => `<li><span><span class="cod">${esc(x.codigo)}</span> ${esc(x.nombre)}</span><span class="tag">${esc(x.motivo)}</span></li>`).join('')}</ul>` : ''}
+      ${(t.no_pude_entrar || []).length ? `<h3 style="margin:16px 0 0">No pudo entrar</h3><ul class="pends">${t.no_pude_entrar.map(x => `<li><span><span class="cod">${esc(x.codigo)}</span> ${esc(x.nombre)}</span><span class="tag">${esc(x.motivo)}</span></li>`).join('')}</ul>` : ''}`}
+      <p class="tag">Se actualiza solo cada 30 segundos.</p>
+    </section>`;
+  bindNav();
+  $('tFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarTablero(); } };
+}
+
+// ── My day (cleaner) ──
+// Cleaner y driver: sin selector de fecha. Hoy es lo que toca hacer; manana se ve como avance.
+const diaEN = f => new Date(f + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+function tarjetaLimpieza(l, i, hoy){
+  const camas = [l.camas_dobles && `${l.camas_dobles} double`, l.camas_indiv && `${l.camas_indiv} single`, l.sofas && `${l.sofas} sofa bed`].filter(Boolean).join(' · ');
+  const activo = ['en_curso', 'terminada'].includes(l.estado);
+  return `<section class="card ${l.entrada ? 'tarjeta prio' : ''}" style="${l.entrada ? 'padding:24px' : ''}${hoy ? '' : ';opacity:.85'}">
+    <div class="barra"><span><span class="num">${i + 1}</span><b>${esc(l.nombre)}</b></span>${hoy ? pill(l.estado, ESTADO_EN[l.estado] || l.estado) : '<span class="pill">Tomorrow</span>'}</div>
+    <p style="margin:8px 0 0"><span class="cod">${esc(l.codigo)}</span> · ${esc(l.pueblo)}${l.direccion ? ` · ${esc(l.direccion)}` : ''}
+      ${l.mapa ? ` · <a href="${esc(l.mapa)}" target="_blank" rel="noopener">Map</a>` : ''}</p>
+    <p class="tag" style="margin:4px 0 0">Check-out ${esc(l.salida)}${l.entrada ? ` · <span class="pill rojo">Guest arrives ${esc(l.entrada)}</span>` : ''} · ${esc(camas || 'no beds set')} · ${esc(l.banos)} bath</p>
+    ${l.notas ? `<p class="tag" style="margin:4px 0 0">Note: ${esc(l.notas)}</p>` : ''}
+    ${!hoy ? '' : `
+    ${l.estado === 'no_pude_entrar' ? `<p class="tag">Reason sent: ${esc(l.motivo)}</p>` : ''}
+    <div class="btns">
+      ${l.estado === 'asignada' ? `<button class="btn" data-scan="${esc(l.id)}">Scan QR to start</button>` : ''}
+      ${l.estado === 'en_curso' ? `<button class="btn" data-abrir="${esc(l.id)}">Open checklist</button>` : ''}
+      ${activo ? `<button class="btn ghost" data-rep="${esc(l.id)}">Report missing item</button><button class="btn ghost" data-pick="${esc(l.id)}">Request pickup</button>` : ''}
+      ${['asignada', 'en_curso'].includes(l.estado) ? `<button class="btn ghost danger" data-noentro="${esc(l.id)}">Couldn't get in</button>` : ''}
+    </div>
+    ${l.pendientes.length ? `<ul class="pends">${l.pendientes.map(p => `<li><span>${p.tipo === 'recogida' ? (/^Basura dejada/.test(p.detalle) ? 'Pickup: trash left' : 'Pickup: trash & dirty linens') : p.tipo === 'utiles' ? esc(utilesEN(p.detalle)) : esc((p.cantidad > 1 ? p.cantidad + ' × ' : '') + p.detalle)}</span>
+      <span>${p.tipo === 'linens' && p.estado === 'entregado' ? `<button class="btn sm" data-recibido="${esc(p.id)}">Received</button>` : pill(p.estado, p.tipo === 'recogida' && p.estado === 'cerrado' ? 'Picked up' : (ESTADO_EN[p.estado] || p.estado))}</span></li>`).join('')}</ul>` : ''}`}
+  </section>`;
+}
+async function pintarMiDia(){
+  const hoy = hoyMas(0), manana = hoyMas(1);
+  const [r, r2] = await Promise.all([db.rpc('mi_dia', { p_fecha: hoy }), db.rpc('mi_dia', { p_fecha: manana })]);
+  const lista = r.data || [], listaM = r2.data || [];
+  if (abierta) {
+    const l = lista.find(x => x.id === abierta && x.estado === 'en_curso');
+    if (l) return pintarChecklist(l);
+    abierta = null;
+  }
+  const nombre = perfil.nombre.split(' ')[0];
+  const n = x => `<b>${x}</b> apartment${x === 1 ? '' : 's'}`;
+  app.innerHTML = `
+    <section class="card">
+      <h1>Hi, ${esc(nombre)}</h1>
+      <p class="sub"><b>Today · ${esc(diaEN(hoy))}</b> — ${lista.length ? `${n(lista.length)}. Go in order.` : 'nothing assigned yet.'}</p>
+      ${r.error ? `<div class="msg err">${esc(r.error)}</div>` : ''}
+    </section>
+    ${lista.map((l, i) => tarjetaLimpieza(l, i, true)).join('')}
+    ${listaM.length ? `<section class="card"><h2>Tomorrow · ${esc(diaEN(manana))}</h2><p class="sub" style="margin:0">${n(listaM.length)} assigned. You can start them tomorrow.</p></section>
+      ${listaM.map((l, i) => tarjetaLimpieza(l, i, false)).join('')}` : ''}
+    ${cajaAvisos()}
+    <section class="card"><p class="tag">${esc(perfil.nombre)} · Cleaning · ${esc(perfil.zona || '')}</p><button class="btn ghost" id="out">Sign out</button></section>`;
+  $('out').onclick = async () => { await db.salir(); };
+  pintarAvisos();
+  document.querySelectorAll('[data-scan]').forEach(b => b.onclick = () => abrirEscaner(lista.find(l => l.id === b.dataset.scan)));
+  document.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => { abierta = b.dataset.abrir; window.scrollTo(0, 0); pintarMiDia(); });
+  document.querySelectorAll('[data-recibido]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_recibido', { p_id: b.dataset.recibido }, 'Received: closed'); });
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { b.disabled = true; accion('reportar_pendiente', { p_limpieza: b.dataset.pick, p_tipo: 'recogida', p_detalle: '', p_cantidad: 1 }, 'Pickup requested'); });
+  document.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => abrirReporte(b.dataset.rep));
+  document.querySelectorAll('[data-noentro]').forEach(b => b.onclick = () => abrirNoEntro(b.dataset.noentro));
+}
+function abrirReporte(limpiezaId){
+  const chips = ['Large towel', 'Small towel', 'Bath mat', 'Sheet set', 'Pillowcase', 'Duvet cover'];
+  $('rTipo').value = 'linens'; $('rDetalle').value = ''; $('rCant').value = 1; $('rMsg').innerHTML = '';
+  $('rGo').disabled = false; $('rGo').textContent = 'Send';
+  $('rChips').innerHTML = chips.map(c => `<button type="button">${c}</button>`).join('');
+  $('rChips').querySelectorAll('button').forEach(b => b.onclick = () => { $('rDetalle').value = b.textContent; });
+  $('rTipo').onchange = () => { $('rChips').style.display = $('rTipo').value === 'linens' ? '' : 'none'; };
+  $('rChips').style.display = '';
+  $('rCancel').onclick = () => $('dRep').close();
+  $('fRep').onsubmit = async e => {
+    e.preventDefault();
+    const det = $('rDetalle').value.trim(), cant = parseInt($('rCant').value, 10);
+    if (!det) { $('rMsg').innerHTML = '<div class="msg err" role="alert">Write what is missing.</div>'; return; }
+    if (!(cant >= 1 && cant <= 50)) { $('rMsg').innerHTML = '<div class="msg err" role="alert">Quantity from 1 to 50.</div>'; return; }
+    $('rGo').disabled = true; $('rGo').textContent = 'Sending…';
+    const r = await db.rpc('reportar_pendiente', { p_limpieza: limpiezaId, p_tipo: $('rTipo').value, p_detalle: det, p_cantidad: cant });
+    if (r.error) { $('rMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; $('rGo').disabled = false; $('rGo').textContent = 'Send'; return; }
+    $('dRep').close(); toast('Sent', 'ok'); pintarMiDia();
+  };
+  $('dRep').showModal();
+}
+function abrirNoEntro(limpiezaId){
+  $('neDetalle').value = ''; $('neMsg').innerHTML = ''; $('neGo').disabled = false;
+  $('neCancel').onclick = () => $('dNoEntro').close();
+  $('fNoEntro').onsubmit = async e => {
+    e.preventDefault();
+    const motivo = $('neMotivo').value + ($('neDetalle').value.trim() ? ': ' + $('neDetalle').value.trim() : '');
+    $('neGo').disabled = true;
+    const r = await db.rpc('no_pude_entrar', { p_id: limpiezaId, p_motivo: motivo });
+    if (r.error) { $('neMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; $('neGo').disabled = false; return; }
+    $('dNoEntro').close(); toast('Sent to your leader', 'ok'); pintarMiDia();
+  };
+  $('dNoEntro').showModal();
+}
+
+// ── Route (driver) ──
+function ordenHTML(orden){
+  const porCleaner = {};
+  orden.forEach(o => (porCleaner[o.cleaner] = porCleaner[o.cleaner] || []).push(o));
+  Object.values(porCleaner).forEach(a => a.sort((x, y) => (x.orden ?? 99) - (y.orden ?? 99)));
+  return Object.keys(porCleaner).length ? Object.entries(porCleaner).map(([c, arr]) => `<h3 style="margin:14px 0 4px;font-size:16px">${esc(c)}</h3>
+    <ul class="pends">${arr.map((o, i) => `<li><span><span class="num" style="width:24px;height:24px;font-size:13px">${i + 1}</span><span class="cod">${esc(o.codigo)}</span> ${esc(o.pueblo)}${o.entrada ? ` <span class="pill rojo">${esc(o.entrada)}</span>` : ''}</span>${pill(o.estado, ESTADO_EN[o.estado] || o.estado)}</li>`).join('')}</ul>`).join('')
+    : '<p class="empty">The cleaning order has not been published yet.</p>';
+}
+async function pintarRuta(){
+  const hoy = hoyMas(0), manana = hoyMas(1);
+  const [r, r2] = await Promise.all([db.rpc('mi_ruta', { p_fecha: hoy }), db.rpc('mi_ruta', { p_fecha: manana })]);
+  const d = r.data || { tareas: [], orden: [] }, dM = r2.data || { tareas: [], orden: [] };
+  const nombre = perfil.nombre.split(' ')[0];
+  app.innerHTML = `
+    <section class="card">
+      <h1>Hi, ${esc(nombre)}</h1>
+      <p class="sub"><b>Today · ${esc(diaEN(hoy))}</b> · Zone ${esc(perfil.zona || '—')} · <b>${d.tareas.length}</b> job${d.tareas.length === 1 ? '' : 's'} waiting.</p>
+      ${r.error ? `<div class="msg err">${esc(r.error)}</div>` : ''}
+    </section>
+    ${d.tareas.map(t => `<section class="card tarjeta ${t.prioritario ? 'prio' : ''}" style="padding:24px">
+        <div class="barra"><b>${t.tipo === 'recogida' ? 'PICK UP' : t.tipo === 'utiles' ? 'DELIVER TOOLS' : 'DELIVER'}</b>${t.prioritario ? `<span class="pill rojo">Guest arrives ${esc(t.entrada || '')}</span>` : ''}</div>
+        <p style="margin:8px 0 0;font-size:18px"><b>${t.tipo === 'recogida' ? (t.foto ? 'Trash left in the apartment' : 'Trash & dirty linens') : t.tipo === 'utiles' ? esc(utilesEN(t.detalle)) : esc(t.cantidad + ' × ' + t.detalle)}</b></p>
+        <p style="margin:6px 0 0"><span class="cod">${esc(t.codigo)}</span> · ${esc(t.nombre)} · ${esc(t.pueblo)}${t.direccion ? ` · ${esc(t.direccion)}` : ''}${t.mapa ? ` · <a href="${esc(t.mapa)}" target="_blank" rel="noopener">Map</a>` : ''}</p>
+        ${t.foto ? `<button class="btn ghost" data-fotob="${esc(t.foto)}">See the photo</button>` : ''}
+        <button class="btn" data-ent="${esc(t.id)}">${t.tipo === 'recogida' ? 'Picked up' : 'Delivered'}</button>
+      </section>`).join('')}
+    <section class="card"><h2>Cleaning order · today</h2>${ordenHTML(d.orden)}</section>
+    ${dM.orden.length ? `<section class="card" style="opacity:.85"><h2>Cleaning order · tomorrow ${esc(diaEN(manana))}</h2>${ordenHTML(dM.orden)}</section>` : ''}
+    ${cajaAvisos()}
+    <section class="card"><p class="tag">${esc(perfil.nombre)} · Driver · ${esc(perfil.zona || '')}</p><button class="btn ghost" id="out">Sign out</button></section>`;
+  $('out').onclick = async () => { await db.salir(); };
+  pintarAvisos();
+  document.querySelectorAll('[data-ent]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_entregado', { p_id: b.dataset.ent }, 'Done'); });
+  document.querySelectorAll('[data-fotob]').forEach(b => b.onclick = () => verFoto(b.dataset.fotob, 'Trash left in the apartment', 'Close'));
+}
+
+// ── Limpieza guiada: QR, checklist, fotos y tiempos ──
+const SALAS = [['kitchen', 'Kitchen', 'Cocina'], ['bathroom', 'Bathroom', 'Baño'], ['bedroom', 'Bedroom', 'Dormitorio'],
+               ['living', 'Living room', 'Salón'], ['final', 'Final check', 'Revisión final']];
+const SALAS_FOTO = ['bedroom', 'bathroom', 'kitchen', 'living'];
+const salaTxt = (s, es) => { const x = SALAS.find(a => a[0] === s); return x ? x[es ? 2 : 1] : s; };
+const TIPO_EN = { normal: 'Normal', refresh: 'Refresh', deep: 'Deep cleaning', huesped_dentro: 'Guest inside', foto: 'Photo shoot', post_mantenimiento: 'After maintenance' };
+const tipoES = t => (TIPOS_L.find(x => x[0] === t) || [0, t])[1];
+const LIB_QR_LEER = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+const LIB_QR_CREAR = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+const ICONO_CAMARA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+let abierta = null;   // limpieza con la checklist abierta (cleaner)
+const cierres = {};   // respuestas del cierre mientras la app esta abierta: { [limpieza]: {escoba, squeegee, recogedor, basura, llaves, motivo} }
+const UTILES = [['escoba', 'Broom', 'Escoba'], ['squeegee', 'Squeegee', 'Squeegee'], ['recogedor', 'Dustpan', 'Recogedor']];
+const utilesEN = t => String(t || '').replace(/^Falta:/, 'Missing:').replace(/escoba/g, 'broom').replace(/recogedor/g, 'dustpan');
+async function verFoto(ruta, titulo, cerrar){
+  $('vTitulo').textContent = titulo; $('vCerrar').textContent = cerrar || 'Cerrar';
+  $('vCuerpo').innerHTML = '<p class="center">…</p>';
+  $('vCerrar').onclick = () => $('dVer').close();
+  $('dVer').showModal();
+  const u = ((await db.fotosUrl([ruta]))[0] || {}).signedUrl;
+  $('vCuerpo').innerHTML = u ? `<img src="${esc(u)}" alt="${esc(titulo)}" style="width:100%;border-radius:12px;display:block">` : '<div class="msg err">Photo not available.</div>';
+}
+
+const cargarScript = (() => {
+  const m = {};
+  return src => m[src] = m[src] || new Promise((ok, ko) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = ok; s.onerror = () => { delete m[src]; s.remove(); ko(new Error('No connection')); };
+    document.head.appendChild(s);
+  });
+})();
+const cargarImagen = file => new Promise((ok, ko) => {
+  const u = URL.createObjectURL(file), i = new Image();
+  i.onload = () => { URL.revokeObjectURL(u); ok(i); };
+  i.onerror = () => { URL.revokeObjectURL(u); ko(new Error('Could not read the photo.')); };
+  i.src = u;
+});
+const fmtMin = m => m == null ? '—' : (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`);
+
+// Escaner de QR (camara dentro de la app; si falla, foto del QR o "Can't scan")
+let scanStream = null, scanRAF = 0;
+function pararCamara(){
+  cancelAnimationFrame(scanRAF);
+  if (scanStream) scanStream.getTracks().forEach(t => t.stop());
+  scanStream = null;
+  const v = $('scVideo'); if (v) v.srcObject = null;
+}
+function leerQR(fuente, w, h, ctx){
+  ctx.canvas.width = w; ctx.canvas.height = h;
+  ctx.drawImage(fuente, 0, 0, w, h);
+  const q = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
+  return q && q.data ? q.data : null;
+}
+// op (opcional): { titulo, alLeer(texto) → {error}, alSin() } — por defecto, empezar la limpieza
+async function abrirEscaner(l, op){
+  if (!l) return;
+  op = op || {
+    titulo: `Scan the QR · ${l.nombre}`,
+    alLeer: async texto => {
+      const r = await db.rpc('iniciar_con_qr', { p_id: l.id, p_qr: texto });
+      if (!r.error) { toast('Started', 'ok'); abierta = l.id; window.scrollTo(0, 0); pintarInicio(); }
+      return r;
+    },
+    alSin: () => abrirSinQR(l)
+  };
+  const d = $('dScan');
+  let ocupado = false;
+  $('scTitulo').textContent = op.titulo;
+  $('scMsg').innerHTML = '<p class="tag">Point the camera at the OpsFlow sticker inside the apartment.</p>';
+  $('scVideo').hidden = false; $('scOtra').hidden = true; $('scFoto').value = '';
+  if (!d.open) d.showModal();
+  d.onclose = pararCamara;
+  $('scCancel').onclick = () => d.close();
+  $('scSin').onclick = () => { d.close(); op.alSin(); };
+  $('scOtra').onclick = () => abrirEscaner(l, op);
+  const fallo = html => { $('scMsg').innerHTML = `<div class="msg err" role="alert">${html}</div>`; $('scVideo').hidden = true; };
+  const leido = async texto => {
+    if (ocupado) return; ocupado = true;
+    pararCamara(); $('scVideo').hidden = true;
+    $('scMsg').innerHTML = '<p class="tag">Checking…</p>';
+    const r = await op.alLeer(texto);
+    if (r && r.error) { fallo(esc(r.error)); $('scOtra').hidden = false; ocupado = false; return; }
+    d.close();
+  };
+  const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  $('scFoto').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    pararCamara();
+    $('scMsg').innerHTML = '<p class="tag">Reading the photo…</p>';
+    try {
+      await cargarScript(LIB_QR_LEER);
+      const img = await cargarImagen(f);
+      let txt = null;
+      for (const lado of [1000, 1600, 700]) {
+        const k = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+        txt = leerQR(img, Math.round(img.naturalWidth * k), Math.round(img.naturalHeight * k), ctx);
+        if (txt) break;
+      }
+      if (txt) return leido(txt);
+      fallo('No QR found in the photo. Get closer, with good light, and try again.'); $('scOtra').hidden = false;
+    } catch (err) { fallo(esc(err.message)); $('scOtra').hidden = false; }
+  };
+  try { await cargarScript(LIB_QR_LEER); }
+  catch (_) { return fallo('No connection. Try again, or use "Can\'t scan".'); }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return fallo('This phone cannot open the camera here. Take a photo of the QR instead.');
+  try { scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); }
+  catch (_) { return fallo('The camera is blocked. Allow the camera for OpsFlow, or take a photo of the QR instead.'); }
+  if (!d.open || ocupado) return pararCamara();
+  const v = $('scVideo'); v.srcObject = scanStream; await v.play().catch(() => {});
+  const paso = () => {
+    if (!scanStream || ocupado) return;
+    if (v.readyState >= 2 && v.videoWidth) {
+      const k = Math.min(1, 640 / v.videoWidth);
+      const txt = leerQR(v, Math.round(v.videoWidth * k), Math.round(v.videoHeight * k), ctx);
+      if (txt) return leido(txt);
+    }
+    scanRAF = requestAnimationFrame(paso);
+  };
+  paso();
+}
+function abrirSinQR(l){
+  $('sqTitulo').textContent = 'Start without QR?';
+  $('sqTexto').innerHTML = 'Use this only if the sticker is missing or broken. Your leader will see that this cleaning started <b>without QR</b>.';
+  $('sqGo').textContent = 'Start without QR';
+  $('sqMsg').innerHTML = ''; $('sqGo').disabled = false;
+  $('sqCancel').onclick = () => $('dSinQR').close();
+  $('sqGo').onclick = async () => {
+    $('sqGo').disabled = true;
+    const r = await db.rpc('iniciar_limpieza', { p_id: l.id });
+    if (r.error) { $('sqMsg').innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; $('sqGo').disabled = false; return; }
+    $('dSinQR').close(); toast('Started without QR', 'ok'); abierta = l.id; window.scrollTo(0, 0); pintarInicio();
+  };
+  $('dSinQR').showModal();
+}
+
+// Fotos: se reducen en el telefono (~200 KB) antes de subir
+async function comprimir(file){
+  const img = await cargarImagen(file);
+  let lado = 1280, q = 0.72, blob = null;
+  for (let i = 0; i < 6; i++) {
+    const k = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', q));
+    if (blob && blob.size <= 250 * 1024) break;
+    lado = Math.round(lado * 0.8); q = Math.max(0.5, q - 0.06);
+  }
+  if (!blob) throw new Error('Could not read the photo.');
+  return blob;
+}
+
+// Checklist del cleaner (pantalla completa mientras limpia)
+async function pintarChecklist(l){
+  const r = await db.rpc('mi_checklist', { p_id: l.id });
+  if (r.error) { abierta = null; toast(r.error); return pintarMiDia(); }
+  const ck = r.data, es = perfil.idioma === 'es';
+  const salas = SALAS.filter(s => ck.pasos.some(p => p.sala === s[0]));
+  const cz = cierres[l.id] = cierres[l.id] || {};
+  // Par de botones Si/No (radio). bueno = true marca la primera opcion; la segunda sale en rojo si es la mala
+  const sino = (n, bueno, a, b) => `<label><input type="radio" name="ci-${n}" value="1" ${bueno === true ? 'checked' : ''}><span>${a}</span></label>
+    <label><input type="radio" class="malo" name="ci-${n}" value="0" ${bueno === false ? 'checked' : ''}><span>${b}</span></label>`;
+  app.innerHTML = `
+    <section class="card">
+      <button class="link" id="ckVolver" style="margin:0">← All apartments</button>
+      <h1 style="margin-top:8px">${esc(l.nombre)}</h1>
+      <p class="sub" style="margin-bottom:0"><span class="cod">${esc(l.codigo)}</span> · ${esc(TIPO_EN[l.tipo] || l.tipo)} ·
+        ${ck.inicio_qr ? pill('terminada', 'Started with QR') : pill('en_curso', 'Started without QR')}</p>
+      <label for="ckPers">People cleaning this apartment</label>
+      <select id="ckPers">${[1, 2, 3, 4].map(n => `<option ${n === ck.personas ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    </section>
+    ${salas.map(s => `<section class="card"><h2>${esc(salaTxt(s[0], es))}</h2>
+      <ul class="pasos">${ck.pasos.filter(p => p.sala === s[0]).map(p => `<li><label class="paso">
+        <input type="checkbox" data-paso="${p.id}" ${p.hecho ? 'checked' : ''}>
+        <span>${esc(es ? p.es : p.en)}${p.obligatorio ? '' : ' <span class="tag">(optional)</span>'}</span></label></li>`).join('')}</ul>
+    </section>`).join('')}
+    <section class="card">
+      <h2>Closing photos</h2>
+      <p class="sub">One clear photo of each room when it is finished. No guests or personal items.</p>
+      <div class="fotos">${SALAS_FOTO.map(s => `<label class="foto ${ck.fotos[s] ? 'ok' : ''}" data-sala="${s}">
+        <input type="file" accept="image/*" capture="environment" data-foto="${s}">
+        ${ICONO_CAMARA}<b>${esc(salaTxt(s, es))}</b><span class="tag" data-txt>${ck.fotos[s] ? 'Done · tap to retake' : 'Tap to take'}</span></label>`).join('')}</div>
+    </section>
+    <section class="card">
+      <h2>Need something?</h2>
+      <div class="btns"><button class="btn ghost" data-rep="${esc(l.id)}">Report missing item</button><button class="btn ghost" data-pick="${esc(l.id)}">Request pickup</button></div>
+    </section>
+    <section class="card" id="cierre">
+      <h2>Close the apartment</h2>
+      <p class="sub" style="margin-bottom:8px">Answer before you leave. Then scan the QR to finish.</p>
+      <fieldset class="preg"><legend>Cleaning tools left in the apartment?</legend>
+        ${UTILES.map(([k, en]) => `<div class="sino"><span>${en}</span>${sino('u-' + k, cz[k], 'Yes', 'No')}</div>`).join('')}
+      </fieldset>
+      <fieldset class="preg"><legend>Trash left in the apartment?</legend>
+        <div class="sino"><span></span>${sino('basura', cz.basura === undefined ? undefined : !cz.basura, 'No', 'Yes')}</div>
+        <div class="extra" id="ciBasura" ${cz.basura ? '' : 'hidden'}>
+          <p class="tag" style="margin:0 0 8px">Take a photo of the trash. The driver of the zone will pick it up.</p>
+          <div class="fotos"><label class="foto ${ck.fotos.basura ? 'ok' : ''}" data-sala="basura">
+            <input type="file" accept="image/*" capture="environment" data-foto="basura">
+            ${ICONO_CAMARA}<b>Trash</b><span class="tag" data-txt>${ck.fotos.basura ? 'Done · tap to retake' : 'Tap to take'}</span></label></div>
+        </div>
+      </fieldset>
+      <fieldset class="preg"><legend>Keys left in the key box?</legend>
+        <div class="sino"><span></span>${sino('llaves', cz.llaves, 'Yes', 'No')}</div>
+        <div class="extra" id="ciLlaves" ${cz.llaves === false ? '' : 'hidden'}>
+          <label for="ciMotivo" style="margin-top:0">Why not? Your leaders will get an urgent alert.</label>
+          <input id="ciMotivo" autocomplete="off" maxlength="200" value="${esc(cz.motivo || '')}">
+        </div>
+      </fieldset>
+    </section>
+    <section class="card pie">
+      <p id="ckEstado" class="tag" style="margin:0" aria-live="polite"></p>
+      <button class="btn" id="ckFin" style="margin-top:10px">Scan QR to finish</button>
+      <button class="link" id="ckSin" style="display:block;margin:10px auto 0">Can't scan the QR?</button>
+    </section>`;
+  const estado = () => {
+    const ob = ck.pasos.filter(p => p.obligatorio), hechos = ob.filter(p => p.hecho).length;
+    const fotos = SALAS_FOTO.filter(s => ck.fotos[s]).length;
+    const resp = UTILES.every(([k]) => typeof cz[k] === 'boolean') && typeof cz.basura === 'boolean' && typeof cz.llaves === 'boolean';
+    const falta = !resp ? 'answer the 3 questions'
+      : cz.basura && !ck.fotos.basura ? 'take the photo of the trash'
+      : cz.llaves === false && (cz.motivo || '').trim().length < 3 ? 'write why the keys are not in the key box' : '';
+    const listo = hechos === ob.length && fotos === 4 && !falta;
+    $('ckEstado').innerHTML = `Checklist <b>${hechos}/${ob.length}</b> · Photos <b>${fotos}/4</b> · Closing <b>${resp && !falta ? 'done' : 'to do'}</b>`
+      + (hechos === ob.length && fotos === 4 && falta ? ` · <b>${falta}</b>` : '');
+    $('ckFin').disabled = $('ckSin').disabled = !listo;
+    $('ckFin').style.cursor = listo ? '' : 'not-allowed';
+  };
+  document.querySelectorAll('#cierre input[type=radio]').forEach(rb => rb.onchange = () => {
+    const n = rb.name.slice(3), v = rb.value === '1';
+    if (n.startsWith('u-')) cz[n.slice(2)] = v;
+    if (n === 'basura') { cz.basura = !v; $('ciBasura').hidden = v; }
+    if (n === 'llaves') { cz.llaves = v; $('ciLlaves').hidden = v; if (!v) $('ciMotivo').focus(); }
+    estado();
+  });
+  $('ciMotivo').oninput = e => { cz.motivo = e.target.value; estado(); };
+  estado();
+  $('ckVolver').onclick = () => { abierta = null; pintarMiDia(); };
+  $('ckPers').onchange = async e => {
+    const r2 = await db.rpc('marcar_personas', { p_id: l.id, p_n: parseInt(e.target.value, 10) });
+    if (r2.error) { toast(r2.error); e.target.value = ck.personas; } else ck.personas = parseInt(e.target.value, 10);
+  };
+  document.querySelectorAll('[data-paso]').forEach(cb => cb.onchange = async () => {
+    const p = ck.pasos.find(x => String(x.id) === cb.dataset.paso), v = cb.checked;
+    p.hecho = v; estado();
+    const r2 = await db.rpc('marcar_paso', { p_id: l.id, p_paso: p.id, p_hecho: v });
+    if (r2.error) { p.hecho = !v; cb.checked = !v; estado(); toast(r2.error); }
+  });
+  document.querySelectorAll('[data-foto]').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const sala = inp.dataset.foto, box = inp.closest('.foto'), txt = box.querySelector('[data-txt]');
+    box.classList.add('sube'); txt.textContent = 'Uploading…'; inp.disabled = true;
+    try {
+      const blob = await comprimir(f);
+      const r2 = await db.subirFoto(l.id, sala, blob);
+      if (r2.error) throw new Error(r2.error);
+      ck.fotos[sala] = `${l.id}/${sala}.jpg`;
+      box.classList.add('ok'); txt.textContent = 'Done · tap to retake';
+      box.querySelector('img')?.remove();
+      const im = document.createElement('img'); im.alt = ''; im.src = URL.createObjectURL(blob); box.prepend(im);
+    } catch (err) {
+      txt.textContent = ck.fotos[sala] ? 'Done · tap to retake' : 'Tap to take';
+      toast(`Photo not saved: ${err.message}`);
+    }
+    box.classList.remove('sube'); inp.disabled = false; inp.value = ''; estado();
+  });
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
+    b.disabled = true; const r2 = await db.rpc('reportar_pendiente', { p_limpieza: l.id, p_tipo: 'recogida', p_detalle: '', p_cantidad: 1 });
+    toast(r2.error || 'Pickup requested', r2.error ? '' : 'ok'); b.disabled = false;
+  });
+  document.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => abrirReporte(l.id));
+  // Cerrar: QR (o null = "Can't scan") + respuestas; el servidor lo guarda todo de una vez
+  const cerrar = async qr => {
+    const r2 = await db.rpc('cerrar_limpieza', { p_id: l.id, p_qr: qr, p_escoba: cz.escoba, p_squeegee: cz.squeegee, p_recogedor: cz.recogedor,
+      p_basura: cz.basura, p_llaves: cz.llaves, p_motivo_llaves: cz.llaves ? null : (cz.motivo || '').trim() });
+    if (!r2.error) {
+      delete cierres[l.id]; abierta = null; window.scrollTo(0, 0);
+      toast(qr ? 'Finished. Well done!' : 'Finished without QR', 'ok'); pintarMiDia();
+    }
+    return r2;
+  };
+  $('ckFin').onclick = () => abrirEscaner(l, { titulo: `Scan the QR to finish · ${l.nombre}`, alLeer: cerrar, alSin: () => sinQRSalida() });
+  const sinQRSalida = () => {
+    $('sqTitulo').textContent = 'Finish without QR?';
+    $('sqTexto').innerHTML = 'Use this only if the sticker is missing or broken. Your leader will see that you finished <b>without QR</b>.';
+    $('sqGo').textContent = 'Finish without QR';
+    $('sqMsg').innerHTML = ''; $('sqGo').disabled = false;
+    $('sqCancel').onclick = () => $('dSinQR').close();
+    $('sqGo').onclick = async () => {
+      $('sqGo').disabled = true;
+      const r2 = await cerrar(null);
+      if (r2.error) { $('sqMsg').innerHTML = `<div class="msg err" role="alert">${esc(r2.error)}</div>`; $('sqGo').disabled = false; return; }
+      $('dSinQR').close();
+    };
+    $('dSinQR').showModal();
+  };
+  $('ckSin').onclick = sinQRSalida;
+}
+
+// Lider / Operacion: avance de cada limpieza en Seguimiento
+function progresoHTML(l, oblig){
+  if (!['en_curso', 'terminada'].includes(l.estado) || !l.inicio) return '';
+  const ids = oblig[l.tipo] || [], hechos = ids.filter(id => l.checklist && id in l.checklist).length;
+  const fotos = (l.fotos_cierre || []).filter(f => SALAS_FOTO.includes(f.sala)).length;
+  const min = Math.round(((l.fin ? new Date(l.fin) : new Date()) - new Date(l.inicio)) / 60000);
+  const cz = l.estado === 'terminada' ? l.cierre : null;
+  const faltan = cz ? UTILES.filter(([k]) => cz[k] === false).map(u => u[2].toLowerCase()) : [];
+  return `<div class="barra prog"><span>${l.inicio_qr ? 'Entrada con QR' : '<span class="pill rojo">Entrada sin QR</span>'}
+      ${l.estado === 'terminada' ? (l.fin_qr ? ' · Salida con QR' : ' · <span class="pill rojo">Salida sin QR</span>') : ''}
+      · Checklist ${hechos}/${ids.length} · Fotos ${fotos}/4 · ${l.fin ? 'Duró' : 'Lleva'} ${fmtMin(min)}${l.personas > 1 ? ` · ${l.personas} personas` : ''}
+      ${faltan.length ? ` · <span class="pill prio">Faltan: ${esc(faltan.join(', '))}</span>` : ''}${cz && cz.basura ? ' · <span class="pill prio">Basura en el apto</span>' : ''}
+      ${cz && cz.llaves === false ? ` · <span class="pill rojo">Llaves NO en key box</span>` : ''}</span>
+    <button class="btn sm ghost" data-ver="${esc(l.id)}">Ver</button></div>`;
+}
+async function abrirVer(l){
+  if (!l) return;
+  $('vTitulo').textContent = `${l.propiedades?.codigo || ''} · ${l.propiedades?.nombre || ''}`;
+  $('vCuerpo').innerHTML = '<p class="center">…</p>';
+  $('vCerrar').onclick = () => $('dVer').close(); $('vCerrar').textContent = 'Cerrar';
+  $('dVer').showModal();
+  const r = await db.rpc('mi_checklist', { p_id: l.id });
+  if (r.error) { $('vCuerpo').innerHTML = `<div class="msg err">${esc(r.error)}</div>`; return; }
+  const ck = r.data, rutas = SALAS_FOTO.filter(s => ck.fotos[s]).map(s => ck.fotos[s]);
+  const urls = await db.fotosUrl(ck.fotos.basura ? [...rutas, ck.fotos.basura] : rutas);
+  const cz = ck.estado === 'terminada' ? ck.cierre : null;
+  const url = ruta => (urls.find(u => u.path === ruta) || {}).signedUrl;
+  const falta = ck.pasos.filter(p => !p.hecho);
+  $('vCuerpo').innerHTML = `
+    <p class="tag">${esc(tipoES(l.tipo))} · ${ck.inicio_qr ? 'Empezó con QR' : '<b>Empezó sin QR</b>'}${ck.estado === 'terminada' ? (ck.fin_qr ? ' · Terminó con QR' : ' · <b>Terminó sin QR</b>') : ''} · ${ck.personas} persona${ck.personas > 1 ? 's' : ''}</p>
+    ${cz ? `<h3 style="margin:12px 0 0;font-size:16px">Cierre</h3>
+      <ul class="cierre-res">${UTILES.map(([k, , es]) => `<li><span>${es}</span>${cz[k] ? '<span class="tag">Sí</span>' : pill('no_pude_entrar', 'Falta')}</li>`).join('')}
+        <li><span>Basura en el apto</span>${cz.basura ? pill('en_curso', 'Sí · para el driver') : '<span class="tag">No</span>'}</li>
+        <li><span>Llaves en el key box</span>${cz.llaves ? '<span class="tag">Sí</span>' : pill('no_pude_entrar', 'NO · ' + (cz.motivo_llaves || ''))}</li></ul>
+      ${ck.fotos.basura && url(ck.fotos.basura) ? `<div class="galeria"><a href="${esc(url(ck.fotos.basura))}" target="_blank" rel="noopener"><img src="${esc(url(ck.fotos.basura))}" alt="Basura">Basura</a></div>` : ''}` : ''}
+    <h3 style="margin:12px 0 0;font-size:16px">Fotos (${rutas.length}/4)</h3>
+    <div class="galeria">${SALAS_FOTO.map(s => ck.fotos[s] && url(ck.fotos[s])
+      ? `<a href="${esc(url(ck.fotos[s]))}" target="_blank" rel="noopener"><img src="${esc(url(ck.fotos[s]))}" alt="${esc(salaTxt(s, true))}">${esc(salaTxt(s, true))}</a>`
+      : `<a aria-disabled="true"><span style="display:grid;place-items:center;aspect-ratio:4/3">Sin foto</span>${esc(salaTxt(s, true))}</a>`).join('')}</div>
+    <h3 style="margin:16px 0 0;font-size:16px">Checklist (${ck.pasos.length - falta.length}/${ck.pasos.length})</h3>
+    ${falta.length ? `<ul class="pends">${falta.map(p => `<li><span>${esc(p.es)}</span><span class="tag">${p.obligatorio ? 'Falta' : 'Opcional'}</span></li>`).join('')}</ul>` : '<p class="tag">Todos los pasos hechos.</p>'}`;
+}
+
+// Seguimiento (lider de limpieza y Operacion): lo que esta en curso y lo terminado, con fotos
+let fechaSeg = hoyMas(0);
+async function pintarSeguimiento(){
+  const [lims, cls, oblig] = await Promise.all([db.limpiezasDia(fechaSeg), db.cleaners(), db.pasosObligatorios()]);
+  const nombreDe = id => (cls.find(c => c.id === id) || {}).nombre || '—';
+  const vis = lims.filter(l => l.publicada);
+  const grupo = e => vis.filter(l => l.estado === e);
+  const enCurso = grupo('en_curso').sort((a, b) => (a.inicio || '').localeCompare(b.inicio || ''));
+  const hechas = grupo('terminada').sort((a, b) => (b.fin || '').localeCompare(a.fin || ''));
+  const noEntro = grupo('no_pude_entrar');
+  const porEmpezar = grupo('asignada').sort((a, b) => nombreDe(a.asignada_a).localeCompare(nombreDe(b.asignada_a)) || (a.orden || 99) - (b.orden || 99));
+  const sinQR = [...enCurso, ...hechas].filter(l => l.inicio_qr === false || l.fin_qr === false).length;
+  const llavesNo = hechas.filter(l => l.cierre && l.cierre.llaves === false);
+  const tarjeta = l => `<div class="tarjeta ${l.estado === 'no_pude_entrar' || (l.cierre && l.cierre.llaves === false) ? 'prio' : ''}">
+      <div class="barra"><span><span class="cod">${esc(l.propiedades?.codigo)}</span> <b>${esc(l.propiedades?.nombre)}</b> <span class="tag">· ${esc(l.propiedades?.pueblo)}</span></span>
+        ${pill(l.estado, ESTADO_ES[l.estado])}</div>
+      <p class="tag" style="margin:4px 0 0">${esc(nombreDe(l.asignada_a))} · ${esc(tipoES(l.tipo))}${l.checkouts?.hora_entrada ? ` · <span class="pill rojo">Check-in ${hm(l.checkouts.hora_entrada)}</span>` : ''}
+        ${l.estado === 'no_pude_entrar' ? ` · <b>Motivo:</b> ${esc(l.motivo_no_entrar)}` : ''}
+        ${l.cierre && l.cierre.llaves === false ? ` · <b>Llaves:</b> ${esc(l.cierre.motivo_llaves)}` : ''}</p>
+      ${progresoHTML(l, oblig)}
+    </div>`;
+  const seccion = (titulo, arr, vacio) => `<section class="card"><h2>${titulo} (${arr.length})</h2>
+      ${arr.length ? arr.map(tarjeta).join('') : `<p class="empty">${vacio}</p>`}</section>`;
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Seguimiento</h2>${fechaBarra('sFecha', fechaSeg)}</div>
+      ${fechaSeg !== hoyMas(0) ? `<div class="msg">Estás viendo el <b>${esc(fmtF(fechaSeg))}</b>, no hoy.</div>` : ''}
+      <div class="tiles">
+        <div class="tile"><b>${porEmpezar.length}</b><span>Por empezar</span></div>
+        <div class="tile"><b>${enCurso.length}</b><span>En curso</span></div>
+        <div class="tile"><b>${hechas.length}</b><span>Terminadas</span></div>
+        <div class="tile"><b>${noEntro.length}</b><span>No pudo entrar</span></div>
+        <div class="tile"><b>${sinQR}</b><span>Sin QR (entrada o salida)</span></div>
+        <div class="tile"><b>${llavesNo.length}</b><span>Llaves NO en key box</span></div>
+      </div>
+      ${lims.some(l => !l.publicada && l.asignada_a) ? '<p class="tag">Hay limpiezas asignadas sin publicar: no aparecen aquí hasta publicarlas en Asignar.</p>' : ''}
+      <p class="tag">Se actualiza solo cada 30 segundos. Pulsa <b>Ver</b> para las fotos y los pasos que faltan.</p>
+    </section>
+    ${llavesNo.length ? seccion('Llaves NO en el key box', llavesNo, '') : ''}
+    ${noEntro.length ? seccion('No pudo entrar', noEntro, '') : ''}
+    ${seccion('En curso', enCurso, 'Ninguna limpieza en curso ahora.')}
+    ${seccion('Terminadas', hechas, 'Todavía no hay limpiezas terminadas.')}
+    ${porEmpezar.length ? `<section class="card"><h2>Por empezar (${porEmpezar.length})</h2><ul class="pends">${porEmpezar.map(l => `<li><span><span class="cod">${esc(l.propiedades?.codigo)}</span> ${esc(l.propiedades?.nombre)}</span><span class="tag">${esc(nombreDe(l.asignada_a))} · orden ${l.orden || '—'}</span></li>`).join('')}</ul></section>` : ''}`;
+  bindNav();
+  $('sFecha').onchange = e => { if (e.target.value) { fechaSeg = e.target.value; pintarSeguimiento(); } };
+  document.querySelectorAll('[data-ver]').forEach(b => b.onclick = () => abrirVer(lims.find(l => l.id === b.dataset.ver)));
+}
+
+// Tiempos por apartamento (lider de limpieza y Operacion) y por persona (solo Operacion)
+let diasT = 90;
+async function pintarTiempos(){
+  const op = perfil.nivel === 'operacion';
+  const [a, p] = await Promise.all([db.rpc('tiempos_aptos', { p_dias: diasT }), op ? db.rpc('tiempos_personas', { p_dias: diasT }) : Promise.resolve(null)]);
+  const filasA = a.data || [], filasP = (p && p.data) || [];
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <div class="barra"><h2>Tiempo de limpieza por apartamento</h2>
+        <select id="tDias" aria-label="Periodo" style="width:auto">${[[30, 'Últimos 30 días'], [90, 'Últimos 90 días'], [365, 'Último año']].map(([d, t]) => `<option value="${d}" ${d === diasT ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      ${a.error ? `<div class="msg err">${esc(a.error)}</div>` : filasA.length ? `<div class="tabla-wrap"><table class="tabla">
+        <thead><tr><th>Apartamento</th><th>Tipo</th><th class="n">Limpiezas</th><th class="n">Media</th><th class="n">Mediana</th><th class="n">Última</th></tr></thead>
+        <tbody>${filasA.map(f => `<tr><td><span class="cod">${esc(f.codigo)}</span><br><span class="tag">${esc(f.nombre)}</span></td><td>${esc(tipoES(f.tipo))}</td>
+          <td class="n">${f.limpiezas}${f.limpiezas < 3 ? ' <span class="pill">pocas</span>' : ''}</td><td class="n"><b>${fmtMin(f.media_min)}</b></td><td class="n">${fmtMin(f.mediana_min)}</td><td class="n">${esc(fmtF(f.ultima))}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<p class="empty">Todavía no hay limpiezas terminadas con QR en este periodo.</p>'}
+      <p class="tag">Solo cuentan las limpiezas con QR al entrar y al salir, de entre 10 min y 6 h. Con menos de 3 limpiezas la media aún no es fiable.</p>
+    </section>
+    ${op ? `<section class="card">
+      <h2>Por persona <span class="pill">Solo Operación</span></h2>
+      ${p.error ? `<div class="msg err">${esc(p.error)}</div>` : filasP.length ? `<div class="tabla-wrap"><table class="tabla">
+        <thead><tr><th>Cleaner</th><th>Tipo</th><th class="n">Medidas</th><th class="n">Media</th><th class="n">Sin QR</th></tr></thead>
+        <tbody>${filasP.map(f => `<tr><td>${esc(f.cleaner)}</td><td>${esc(tipoES(f.tipo))}</td><td class="n">${f.limpiezas}</td><td class="n">${fmtMin(f.media_min)}</td><td class="n">${f.sin_qr ? `<span class="pill rojo">${f.sin_qr}</span>` : '0'}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<p class="empty">Sin datos en este periodo.</p>'}
+      <p class="tag">Para planificar turnos, no para sancionar: el personal debe estar informado por escrito de esta medición.</p>
+    </section>` : ''}`;
+  bindNav();
+  $('tDias').onchange = e => { diasT = parseInt(e.target.value, 10); pintarTiempos(); };
+}
+
+// Pegatinas QR para imprimir (solo Operacion)
+async function imprimirQR(soloCodigo){
+  try { await cargarScript(LIB_QR_CREAR); } catch (_) { return toast('Sin conexión: no se pudo preparar la impresión.'); }
+  const r = await db.rpc('qr_lista');
+  if (r.error) return toast(r.error);
+  const lista = (r.data || []).filter(x => !soloCodigo || x.codigo === soloCodigo);
+  if (!lista.length) return toast('No hay propiedades activas.');
+  $('print').innerHTML = `<div class="pegs">${lista.map(x => {
+    const q = qrcode(0, 'M'); q.addData(x.qr); q.make();
+    return `<div class="peg">${q.createSvgTag({ cellSize: 4, margin: 2, scalable: true })}<b>${esc(x.codigo)}</b><span>${esc(x.nombre)}</span><small>Scan with OpsFlow to start the cleaning</small></div>`;
+  }).join('')}</div>`;
+  window.print();
+}
+
+// ── Avisos (push) ──
+const VAPID_PUBLIC = 'BFOv1VjGzyWHv9wf_BeM8PeuYzljTZa3y8AV9GQVbuAL1Ajr_tHZ3gtTzDTTQOzh26n1yWA1udp1V1WpV0idz_8';
+const QUE_AVISA = { reportar_pendiente: 'pendiente', marcar_preparado: 'pendiente', marcar_entregado: 'pendiente', no_pude_entrar: 'limpieza', publicar_orden: 'orden' };
+// Despues de cada boton de la cadena: el servidor decide a quien avisar (no bloquea la pantalla)
+function avisar(nombre, args, data){
+  if (nombre === 'cerrar_limpieza') {
+    (data && data.pendientes || []).forEach(id => sb.functions.invoke('avisar', { body: { tipo: 'pendiente', id } }).catch(() => {}));
+    if (data && data.llaves === false) sb.functions.invoke('avisar', { body: { tipo: 'limpieza', id: args.p_id } }).catch(() => {});
+    return;
+  }
+  const tipo = QUE_AVISA[nombre];
+  if (!tipo) return;
+  const body = tipo === 'orden' ? { tipo, fecha: args.p_fecha }
+             : { tipo, id: nombre === 'reportar_pendiente' ? data : args.p_id };
+  sb.functions.invoke('avisar', { body }).catch(() => {});
+}
+const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+const instalada = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+async function miSuscripcion(){
+  if (!pushOK()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+const b64aBytes = s => Uint8Array.from(atob((s + '==='.slice((s.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+async function guardarSuscripcion(sub){
+  const j = sub.toJSON();
+  const r = await db.rpc('guardar_suscripcion', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth,
+    p_dispositivo: (esIOS() ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'PC') + ' · ' + new Date().toLocaleDateString('sv-SE') });
+  return !r.error;
+}
+// Al entrar: si este telefono ya tenia avisos, pasan a la cuenta que entra
+async function refrescarSuscripcion(){
+  try { const s = await miSuscripcion(); if (s && Notification.permission === 'granted') await guardarSuscripcion(s); } catch (_) {}
+}
+const TA = {
+  es: { tit: 'Avisos', on: '✓ Avisos activados en este teléfono.', off: 'Activa los avisos para que el teléfono suene cuando te llegue algo.',
+        btn: 'Activar avisos', test: 'Enviar aviso de prueba', quitar: 'Desactivar', sent: 'Enviado a {n} de {m} teléfonos. Debe sonar en unos segundos.', noreg: 'Este teléfono no quedó registrado. Pulsa Desactivar y vuelve a activar.', rech: 'El servicio de avisos lo rechazó. Código:',
+        nosent: 'No se pudo enviar.', denied: 'Los avisos están bloqueados para esta página. Actívalos en los ajustes del navegador (Notificaciones) y recarga.',
+        ios: 'En iPhone los avisos solo funcionan con la app instalada: ábrela en Safari → Compartir → Añadir a pantalla de inicio, y entra desde el icono.',
+        nosup: 'Este navegador no puede recibir avisos. Abre la app en Chrome (Android) o instálala desde Safari (iPhone).', fail: 'No se pudo activar. Inténtalo otra vez.' },
+  en: { tit: 'Alerts', on: '✓ Alerts are on for this phone.', off: 'Turn on alerts so your phone rings when something comes in.',
+        btn: 'Turn on alerts', test: 'Send test alert', quitar: 'Turn off', sent: 'Sent to {n} of {m} phones. It should ring in a few seconds.', noreg: 'This phone is not registered. Tap Turn off, then turn alerts on again.', rech: 'The alert service rejected it. Code:',
+        nosent: 'Could not send.', denied: 'Alerts are blocked for this page. Allow Notifications in your browser settings and reload.',
+        ios: 'On iPhone, alerts only work with the app installed: open it in Safari → Share → Add to Home Screen, then open it from the icon.',
+        nosup: 'This browser cannot receive alerts. Open the app in Chrome (Android) or install it from Safari (iPhone).', fail: 'Could not turn on. Try again.' }
+};
+const cajaAvisos = () => '<section class="card" id="avisosBox" aria-live="polite"></section>';
+async function pintarAvisos(msg, ok){
+  const box = $('avisosBox'); if (!box || !perfil) return;
+  const t = TA[perfil.idioma] || TA.en;
+  const nota = msg ? `<div class="msg ${ok ? 'ok' : 'err'}">${esc(msg)}</div>` : '';
+  if (!pushOK() || (esIOS() && !instalada())) {
+    box.innerHTML = `<h2>${t.tit}</h2><p class="tag">${esIOS() ? t.ios : t.nosup}</p>`; return;
+  }
+  if (Notification.permission === 'denied') { box.innerHTML = `<h2>${t.tit}</h2><div class="msg err">${t.denied}</div>`; return; }
+  const sub = await miSuscripcion();
+  if (sub && Notification.permission === 'granted') {
+    box.innerHTML = `<p class="sub" style="margin:0 0 8px">${t.on}</p><div class="btns"><button class="btn ghost" id="avTest">${t.test}</button><button class="btn ghost" id="avOff">${t.quitar}</button></div>${nota}`;
+    $('avTest').onclick = async () => {
+      $('avTest').disabled = true;
+      const { data, error } = await sb.functions.invoke('avisar', { body: { tipo: 'prueba' } });
+      if (error || !data) {
+        let det = error && error.message || '';
+        try { const j = await error.context.json(); if (j && j.error) det = j.error; } catch (_) {}
+        return pintarAvisos(t.nosent + (det ? ' (' + det + ')' : ''));
+      }
+      if (!data.telefonos) return pintarAvisos(t.noreg);
+      if (data.entregados) return pintarAvisos(t.sent.replace('{n}', data.entregados).replace('{m}', data.telefonos), true);
+      const d = (data.detalle || [])[0] || {};
+      pintarAvisos(t.rech + ' ' + (d.status || '?') + (d.texto ? ' · ' + d.texto : ''));
+    };
+    $('avOff').onclick = async () => {
+      try { await sb.rpc('borrar_suscripcion', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); } catch (_) {}
+      pintarAvisos();
+    };
+  } else {
+    box.innerHTML = `<h2>${t.tit}</h2><p class="tag">${t.off}</p><button class="btn" id="avOn">${t.btn}</button>${nota}`;
+    $('avOn').onclick = async () => {
+      $('avOn').disabled = true;
+      try {
+        if (await Notification.requestPermission() !== 'granted') return pintarAvisos();
+        const reg = await navigator.serviceWorker.ready;
+        const s = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64aBytes(VAPID_PUBLIC) });
+        if (!(await guardarSuscripcion(s))) throw new Error('rpc');
+        pintarAvisos();
+      } catch (_) { pintarAvisos(t.fail); }
+    };
+  }
+}
+// Con la app abierta: al llegar un aviso, suena un tono corto y la pantalla se actualiza al momento
+function tono(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.18].forEach(d => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.25, ctx.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + d + 0.15);
+      o.start(ctx.currentTime + d); o.stop(ctx.currentTime + d + 0.16); });
+  } catch (_) {}
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  if (!e.data || e.data.tipo !== 'aviso' || !perfil) return;
+  tono();
+  if (!abierta && !document.querySelector('dialog[open]')) pintarInicio();
+});
+
+// ── Arranque: decide que pantalla toca ──
+async function arrancar(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return pintarLogin();
+  perfil = await db.miPerfil();
+  if (!perfil || !perfil.activo) {
+    // El mensaje se decide ANTES de cerrar sesion: al cerrar, onAuthStateChange borra el perfil.
+    const msg = !perfil
+      ? 'This account has no profile yet. Talk to Operations. · Esta cuenta aún no tiene perfil. Habla con Operación.'
+      : 'Account disabled. Talk to Operations. · Cuenta desactivada. Habla con Operación.';
+    await sb.auth.signOut({ scope:'local' });
+    return pintarLogin(msg);
+  }
+  document.documentElement.lang = perfil.idioma;
+  if (perfil.debe_cambiar_clave) return pintarCambioClave();
+  refrescarSuscripcion();
+  const v = new URLSearchParams(location.search).get('v');
+  if (v && tabsDe().some(([k]) => k === v)) vista = v;
+  pintarInicio();
+}
+
+document.getElementById('helpBtn').onclick = () => document.getElementById('help').showModal();
+document.getElementById('helpClose').onclick = () => document.getElementById('help').close();
+
+if (!window.supabase) {
+  app.innerHTML = '<div class="card"><h1>No connection · Sin conexión</h1><p class="sub">Connect to the internet and open OpsFlow again.<br><span class="tag">Conéctate a internet y vuelve a abrir OpsFlow.</span></p></div>';
+} else {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession:true, autoRefreshToken:true } });
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { perfil = null; pintarLogin(); } });
+  arrancar();
+}
+</script>
+</body>
+</html>
