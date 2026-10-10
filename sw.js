@@ -2,11 +2,12 @@
 // si no hay conexion usa la copia guardada.
 // Solo guarda archivos de la propia app: nunca respuestas de Supabase ni de otros
 // servidores, para que los datos de las personas no queden copiados en el telefono.
-const CACHE = 'opsflow-v4';
-const APP = ['./', './index.html', './demo.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'opsflow-v5';
+const APP = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP)));
+  // Cada archivo por separado: si uno falta en GitHub, la app se instala igual
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(APP.map(u => c.add(u).catch(() => {})))));
 });
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys()
