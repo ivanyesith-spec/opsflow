@@ -187,6 +187,11 @@ ul.items li.on b{color:var(--accent)}
 .reloj{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-variant-numeric:tabular-nums}
 .pill.u-sin{background:var(--surface-2);color:var(--ink-2)}
 .pill.u-propuesta{background:var(--accent-soft);color:var(--accent)}
+.pends li:has(.ia){flex-wrap:wrap}
+.ia{flex-basis:100%;display:flex;flex-direction:column;gap:6px;margin-top:8px;padding:8px 10px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:6px}
+.pill.ia-pill{background:var(--accent);color:var(--accent-ink)}
+.ia-dec{display:flex;gap:8px;align-items:center}
+.ia-dec select{width:auto;padding:6px 8px;font-size:14px}
 .pill.u-dudosa{background:var(--warn-soft);color:var(--warn)}
 .pill.u-confirmada{background:var(--ok-soft);color:var(--ok)}
 .ubic{border:1px solid var(--line, var(--surface-2));border-radius:10px;padding:10px 12px;margin:8px 0}
@@ -509,9 +514,11 @@ const db = {
     return error ? [] : data;
   },
   async pendientesDia(fecha, tipo){
-    let q = sb.from('pendientes').select('id,tipo,detalle,cantidad,estado,prioritario,creado_en,items,zona,foto,incidencia,propiedades(codigo,nombre,pueblo)').eq('fecha', fecha);
-    if (tipo) q = q.eq('tipo', tipo);
-    const { data, error } = await q;
+    const base = 'id,tipo,detalle,cantidad,estado,prioritario,creado_en,items,zona,foto,incidencia,propiedades(codigo,nombre,pueblo)';
+    const ia = ',ia_departamento,ia_urgencia,ia_resumen,ia_motivo,ia_en,ia_decision,ia_decision_dep';
+    const pedir = cols => { let q = sb.from('pendientes').select(cols).eq('fecha', fecha); if (tipo) q = q.eq('tipo', tipo); return q; };
+    let { data, error } = await pedir(base + ia);
+    if (error) ({ data, error } = await pedir(base));   // sin la migracion 002 la app funciona igual
     if (error) return [];
     return data.sort((a, b) => (b.prioritario - a.prioritario) || a.creado_en.localeCompare(b.creado_en));
   },
@@ -1106,9 +1113,10 @@ async function pintarAsignar(){
       <h2>Pendientes del día (${pends.length})</h2>
       ${pends.length ? `<ul class="pends">${pends.map(p => `<li><span>${p.prioritario ? '<span class="pill rojo">Check-in</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> ${esc(p.items ? '' : (p.cantidad > 1 ? p.cantidad + ' × ' : ''))}${esc(p.detalle)} <span class="tag">(${esc(p.tipo)})</span></span>
           <span>${pill(p.estado, p.estado === 'entregado' ? 'Esperando Received' : ESTADO_ES[p.estado])}
-          ${p.tipo === 'otro' && p.estado === 'abierto' ? `<button class="btn sm" data-resolver="${esc(p.id)}">Resolver</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">Sin pendientes.</p>'}
+          ${p.tipo === 'otro' && p.estado === 'abierto' ? `<button class="btn sm" data-resolver="${esc(p.id)}">Resolver</button>` : ''}</span>${p.tipo === 'otro' ? iaHTML(p) : ''}</li>`).join('')}</ul>` : '<p class="empty">Sin pendientes.</p>'}
     </section>`;
   bindNav();
+  bindIA(pintarAsignar);
   $('aFecha').onchange = e => { if (e.target.value) { fechaCk = e.target.value; pintarAsignar(); } };
   $('aPub').onclick = async () => {
     const b = $('aPub'); b.disabled = true; b.textContent = 'Publicando…';
@@ -1276,12 +1284,49 @@ function abrirReporte(limpiezaId, alTerminar){
       if (!det) return err('Write what the problem is.');
       $('rGo').disabled = true; $('rGo').textContent = 'Sending…';
       r = await db.rpc('reportar_pendiente', { p_limpieza: limpiezaId, p_tipo: 'otro', p_detalle: det, p_cantidad: 1 });
+      if (!r.error && r.data) iaClasificar(r.data);
     }
     if (r.error) return err(r.error);
     $('dRep').close(); toast('Sent', 'ok');
     if (alTerminar) alTerminar(); else pintarMiDia();
   };
   $('dRep').showModal();
+}
+// ── IA: clasificar reportes "Other" ──
+// La IA solo SUGIERE departamento y urgencia; el lider acepta o corrige. Nada se asigna solo.
+const IA_DEPS = ['Limpieza', 'Linens', 'Drivers', 'Bodega', 'Mantenimiento', 'Property manager', 'Reservaciones', 'Operación'];
+const IA_URG = { alta: ['rojo', 'Urgencia alta'], media: ['prio', 'Urgencia media'], baja: ['', 'Urgencia baja'] };
+function iaClasificar(id){
+  sb.functions.invoke('clasificar', { body: { id } }).catch(() => {});   // si falla, el reporte llega igual que antes
+}
+function iaHTML(p){
+  if (!('ia_en' in p)) return '';                                  // migracion 002 aun no aplicada
+  if (!p.ia_en) return `<div class="ia"><span class="tag">IA: sin sugerencia todavía</span>
+      <button class="btn ghost sm" data-ia-reintentar="${esc(p.id)}">Pedir sugerencia</button></div>`;
+  const [cls, txt] = IA_URG[p.ia_urgencia] || ['', p.ia_urgencia || ''];
+  if (p.ia_decision) return `<div class="ia"><span class="tag">IA: ${esc(p.ia_resumen || '')}</span>
+      <span class="tag"><b>${p.ia_decision === 'aceptada' ? '✓ Aceptado' : '✎ Corregido'}:</b> ${esc(p.ia_decision_dep)}</span></div>`;
+  return `<div class="ia">
+      <span><span class="pill ia-pill">IA sugiere</span> <b>${esc(p.ia_departamento)}</b> ${cls || txt ? `<span class="pill ${cls}">${esc(txt)}</span>` : ''}</span>
+      <span class="tag">${esc(p.ia_resumen || '')}${p.ia_motivo ? ` · <i>${esc(p.ia_motivo)}</i>` : ''}</span>
+      <span class="ia-dec"><select data-ia-dep="${esc(p.id)}" aria-label="Departamento">${IA_DEPS.map(d => `<option ${d === p.ia_departamento ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select>
+        <button class="btn sm" data-ia-ok="${esc(p.id)}">Confirmar</button></span>
+    </div>`;
+}
+function bindIA(repintar){
+  document.querySelectorAll('[data-ia-ok]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.iaOk, dep = document.querySelector(`[data-ia-dep="${CSS.escape(id)}"]`).value;
+    b.disabled = true;
+    const r = await db.rpc('decidir_clasificacion', { p_id: id, p_departamento: dep });
+    if (r.error) { toast(r.error); b.disabled = false; return; }
+    toast('Departamento: ' + dep, 'ok'); repintar();
+  });
+  document.querySelectorAll('[data-ia-reintentar]').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Pidiendo…';
+    const { data, error } = await sb.functions.invoke('clasificar', { body: { id: b.dataset.iaReintentar } });
+    if (error || (data && data.ok === false)) { let m = 'La IA no respondió. El reporte sigue normal.'; try { m = (await error.context.json()).error || m; } catch (_) {} toast(m); }
+    repintar();
+  });
 }
 function abrirNoEntro(limpiezaId){
   $('neDetalle').value = ''; $('neMsg').innerHTML = ''; $('neGo').disabled = false;
