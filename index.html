@@ -287,7 +287,7 @@ a.btn.go{min-width:64px}
 <div class="wrap">
   <div class="top">
     <span class="brand">OpsFlow</span>
-    <span class="top-d"><button class="icon lang" id="langBtn" type="button" data-l="src-x"></button><button class="icon" id="helpBtn" aria-label="Help">?</button></span>
+    <span class="top-d"><button class="icon lang" id="modoBtn" type="button" hidden></button><button class="icon lang" id="langBtn" type="button" data-l="src-x"></button><button class="icon" id="helpBtn" aria-label="Help">?</button></span>
   </div>
   <main id="app" aria-live="polite"><p class="center">…</p></main>
 </div>
@@ -1288,6 +1288,11 @@ Esa sustitución no existe. | That substitution does not exist.
 Esa sustitución ya estaba revocada. | That substitution was already revoked.
 Esa sustitución ya terminó. | That substitution is already over.
 Solo Operación. | Operations only.
+Vista de líder | Leader view
+Mi trabajo | My work
+Solo el driver que la cogió o el líder de drivers (o su sustituto) la sueltan. | Only the driver who took it or the drivers leader (or their substitute) can release it.
+Esta tarea la asignó el líder: usa "No pude entregar" o pide al líder que la suelte. | Your leader assigned this job: use "Couldn't deliver" or ask your leader to release it.
+Departamento no válido. | Invalid department.
 `;
 // ── Idioma: inglés por defecto; botón EN/ES arriba. Traduce lo que se pinta (texto, placeholder, aria-label, title) ──
 const LANG = (() => { try { return localStorage.getItem('opsflow-lang') || 'en'; } catch (_) { return 'en'; } })();
@@ -1418,10 +1423,11 @@ const db = {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return null;
     const { data } = await sb.from('perfiles').select('*').eq('id', user.id).maybeSingle();
-    // OPS-ADM-001: un sustituto vigente trabaja como líder de su departamento hasta la fecha fijada por Operación
+    // OPS-ADM-001: un sustituto vigente SUMA las facultades del líder de su departamento hasta la fecha fijada
+    // por Operación y conserva su trabajo de operador. Su nivel no cambia: la app alterna entre las dos vistas.
     if (data && data.activo && data.nivel === 'operador') {
       const s = await sb.rpc('mi_sustitucion').catch(() => ({}));
-      if (s && s.data && s.data.departamento === data.departamento) { data.nivel = 'lider'; data.sustituto = s.data; }
+      if (s && s.data && s.data.departamento === data.departamento) data.sustituto = s.data;
     }
     return data;
   },
@@ -1555,7 +1561,19 @@ const db = {
 };
 
 // ── Pantallas ──
+// Sustituto temporal: botón arriba para pasar de "Mi trabajo" (operador) a "Vista de líder" y volver.
+// Solo cambia lo que se enseña: el servidor comprueba cada acción con la sustitución vigente.
+let modoLider = false;
+function aplicarModo(){
+  const b = document.getElementById('modoBtn');
+  if (!perfil || !perfil.sustituto) { b.hidden = true; return; }
+  perfil.nivel = modoLider ? 'lider' : 'operador';
+  b.hidden = false;
+  b.textContent = modoLider ? 'Mi trabajo' : 'Vista de líder';
+}
+document.getElementById('modoBtn').onclick = () => { modoLider = !modoLider; vista = 'inicio'; aplicarModo(); pintarInicio(); };
 function pintarLogin(msg){
+  document.getElementById('modoBtn').hidden = true;
   app.innerHTML = `
     <form class="card" id="fLogin" novalidate>
       <h1>${bi('Sign in', 'Entrar')}</h1>
@@ -2547,7 +2565,7 @@ async function pintarRuta(){
       <div class="btns">${goHTML(t)}${t.foto ? `<button class="btn ghost" data-fotob="${esc(t.foto)}">See the photo</button>` : ''}
         <button class="btn" data-ent="${esc(t.id)}">${t.tipo === 'recogida' ? 'Picked up' : 'Delivered'}</button>
         ${t.incidencia ? '' : `<button class="btn ghost danger" data-noent="${esc(t.id)}">${t.tipo === 'recogida' ? "Couldn't pick up" : "Couldn't deliver"}</button>`}
-        <button class="btn ghost" data-soltar="${esc(t.id)}">Release</button></div>
+        ${t.asignado ? '' : `<button class="btn ghost" data-soltar="${esc(t.id)}">Release</button>`}</div>
     </section>`;
   const bolsaMia = b => `<section class="card tarjeta ${b.entrada ? 'prio' : ''}" style="padding:20px">
       <div class="barra"><b>DELIVER LINENS BAG</b>${prioHTML(b)}</div>${lugarHTML(b)}
@@ -3746,6 +3764,7 @@ async function arrancar(){
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return pintarLogin();
   perfil = await db.miPerfil();
+  modoLider = false; aplicarModo();
   if (!perfil || !perfil.activo) {
     // El mensaje se decide ANTES de cerrar sesion: al cerrar, onAuthStateChange borra el perfil.
     const msg = !perfil

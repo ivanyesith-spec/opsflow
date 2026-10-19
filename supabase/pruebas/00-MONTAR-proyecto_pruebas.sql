@@ -5,11 +5,23 @@
 --   · De 23-PEGAR-trafico.sql NO incluye el apartado 5 (tarea cada 10 min que llama a la función de PRODUCCIÓN)
 -- Va en transacciones: si algo falla, borra el proyecto de pruebas y créalo de nuevo (no afecta a producción).
 
+-- ✏️ ESCRIBE AQUÍ el identificador de este proyecto de PRUEBAS (20 letras; sale en la dirección:
+--    supabase.com/dashboard/project/<identificador>). Queda guardado como marca "pruebas" y las migraciones
+--    nuevas (34 en adelante) solo se ejecutan si se escribe el mismo identificador.
+select set_config('opsflow.proyecto', 'ESCRIBE-AQUI-EL-ID-DEL-PROYECTO', false);
+
 begin;
 
 -- Freno: si ya existe OpsFlow en esta base de datos, parar (puede ser PRODUCCIÓN)
 do $$
+declare v text := current_setting('opsflow.proyecto', true);
 begin
+  if v is null or v !~ '^[a-z]{20}$' then
+    raise exception 'PARADO: escribe en la primera línea el identificador del proyecto de pruebas (20 letras minúsculas).';
+  end if;
+  if v = 'zxsiantglodsqqvigndk' then
+    raise exception 'PARADO: ese identificador es el de PRODUCCIÓN. Usa un proyecto NUEVO y vacío.';
+  end if;
   if to_regclass('public.perfiles') is not null or to_regclass('public.limpiezas') is not null then
     raise exception 'PARADO: esta base de datos ya tiene OpsFlow (¿es producción?). Usa un proyecto NUEVO y vacío.';
   end if;
@@ -1405,6 +1417,14 @@ end $$;
 alter type public.tipo_pendiente add value if not exists 'utiles';
 commit;  -- un valor nuevo de un tipo solo se puede usar después de confirmarlo
 begin;
+-- Mismo freno en cada tramo (por si alguien ejecuta el archivo por partes)
+do $$
+begin
+  if coalesce(current_setting('opsflow.proyecto', true), '') !~ '^[a-z]{20}$' or current_setting('opsflow.proyecto', true) = 'zxsiantglodsqqvigndk'
+     or to_regclass('public.limpiezas') is null then
+    raise exception 'PARADO: falta el identificador del proyecto de pruebas o el primer tramo no se montó.';
+  end if;
+end $$;
 -- (en este archivo el valor nuevo se compara como texto: tipo::text = 'utiles')
 
 do $$ declare c text; begin
@@ -2307,6 +2327,14 @@ grant  execute on function public.avisos_para(text, uuid, date) to service_role;
 alter type public.estado_limpieza add value if not exists 'cancelada';
 commit;  -- un valor nuevo de un tipo solo se puede usar después de confirmarlo
 begin;
+-- Mismo freno en cada tramo (por si alguien ejecuta el archivo por partes)
+do $$
+begin
+  if coalesce(current_setting('opsflow.proyecto', true), '') !~ '^[a-z]{20}$' or current_setting('opsflow.proyecto', true) = 'zxsiantglodsqqvigndk'
+     or to_regclass('public.limpiezas') is null then
+    raise exception 'PARADO: falta el identificador del proyecto de pruebas o el primer tramo no se montó.';
+  end if;
+end $$;
 -- (en este archivo el valor nuevo se compara como texto: estado::text = 'cancelada')
 alter table public.limpiezas   add column if not exists cancelada_motivo text;
 alter table public.limpiezas   add column if not exists reabierta_en timestamptz;
@@ -5576,6 +5604,17 @@ begin
       where b.fecha = v_hoy and b.estado = 'preparada' and l.estado::text <> 'cancelada'), '[]'::jsonb));
 end $$;
 
+-- Marca de entorno: este proyecto es de PRUEBAS. Las migraciones nuevas la comprueban antes de cambiar nada.
+create table public.opsflow_entorno (
+  id         int primary key check (id = 1),
+  tipo       text not null check (tipo in ('pruebas', 'produccion')),
+  proyecto   text not null check (proyecto ~ '^[a-z]{20}$'),
+  marcado_en timestamptz not null default now()
+);
+alter table public.opsflow_entorno enable row level security;
+revoke all on public.opsflow_entorno from anon, authenticated;
+insert into public.opsflow_entorno (id, tipo, proyecto) values (1, 'pruebas', current_setting('opsflow.proyecto'));
+
 commit;
 
--- Si llegaste aquí sin errores: el proyecto de pruebas tiene el backend 1–33.
+-- Si llegaste aquí sin errores: el proyecto de pruebas tiene el backend 1–33 y la marca "pruebas".
