@@ -9,6 +9,17 @@
 -- PRIMERO en el proyecto de PRUEBAS. NO pegar en producción sin autorización expresa.
 -- Después, ejecutar 35-PEGAR-pruebas_permisos.sql: todas las filas deben decir OK.
 
+begin;
+
+-- Freno de seguridad: si hay propiedades REALES (no de prueba), esto parece PRODUCCIÓN → parar sin cambiar nada.
+-- Quitar este bloque SOLO cuando el dueño autorice expresamente aplicar la migración en producción.
+do $$
+begin
+  if exists (select 1 from public.propiedades where not es_prueba) then
+    raise exception 'PARADO: hay propiedades reales en esta base de datos (¿es producción?). No se ha cambiado nada.';
+  end if;
+end $$;
+
 -- 1. Sustituciones --------------------------------------------------------------------------
 create table if not exists public.sustituciones (
   id            uuid primary key default gen_random_uuid(),
@@ -251,3 +262,5 @@ as $$
 $$;
 revoke execute on function public.mi_sustitucion() from public, anon;
 grant  execute on function public.mi_sustitucion() to authenticated;
+
+commit;

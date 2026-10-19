@@ -3,6 +3,19 @@
 -- Supabase → SQL Editor → pegar todo → Run. Todas las filas deben decir OK.
 -- Crea usuarios y un apartamento de prueba y lo deja todo como estaba.
 
+begin;
+
+-- Freno de seguridad: con propiedades REALES esto parece PRODUCCIÓN → parar sin tocar nada
+do $$
+begin
+  if exists (select 1 from public.propiedades where not es_prueba) then
+    raise exception 'PARADO: hay propiedades reales en esta base de datos (¿es producción?). No se ha cambiado nada.';
+  end if;
+  if to_regclass('public.sustituciones') is null then
+    raise exception 'Falta la migración 34: pega primero 34-PEGAR-permisos_sustituciones.sql.';
+  end if;
+end $$;
+
 -- Por si una ejecución anterior se cortó a medias
 delete from public.sustituciones where sustituto::text like '00000000-0000-0000-0000-0000000034%' or nombrado_por::text like '00000000-0000-0000-0000-0000000034%';
 delete from public.pendientes where propiedad_id in (select id from public.propiedades where codigo like 'TEST-PM_');
@@ -196,5 +209,7 @@ delete from public.avisos_enviados where id > (select max_av from _inicio);
 delete from public.eventos where id > (select max_ev from _inicio);
 delete from public.perfiles where id::text like '00000000-0000-0000-0000-0000000034%';
 delete from auth.users      where id::text like '00000000-0000-0000-0000-0000000034%';
+
+commit;
 
 select * from resultados order by n;
