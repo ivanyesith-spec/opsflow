@@ -1250,6 +1250,44 @@ Más | More
 Menos | Less
 Nueva | New
 Nuevo | New
+// Sustituciones y permisos de asignación (OPS-ADM-001, OPS-GLOBAL-AUD-001)
+Sustituciones | Substitutions
+Sustituto | Substitute
+Nombrar sustituto | Name substitute
+Elegir… | Choose…
+No hay operadores activos | No active staff
+Vigente | Active
+Programada | Scheduled
+Revocada | Revoked
+Revocar | Revoke
+Ninguna sustitución. | No substitutions.
+Últimos # días (#) | Last # days (#)
+nombrado por {0} | named by {0}
+Sustituto nombrado | Substitute named
+Sustitución revocada | Substitution revoked
+Elige al sustituto. | Choose the substitute.
+Pon las dos fechas. | Enter both dates.
+La fecha "hasta" tiene que ser posterior a "desde". | The "until" date must be after the "from" date.
+Escribe el motivo. | Write the reason.
+Sin driver | No driver
+Cuando falta un líder, Operación nombra a un operador de su mismo departamento. Solo entre esas fechas puede asignar y ver lo que ve el líder. Operación no asigna personal. | When a leader is away, Operations names someone from the same department. Only between those dates can they assign and see what the leader sees. Operations does not assign staff.
+Sustituto temporal del líder de {0} hasta el {1} | Temporary substitute for the {0} leader until {1}
+No se pudieron leer las sustituciones: {0}. ¿Está pegado en Supabase el archivo #-PEGAR-permisos_sustituciones.sql? | Could not read the substitutions: {0}. Has #-PEGAR-permisos_sustituciones.sql been pasted in Supabase?
+Solo el líder de drivers (o su sustituto) asigna. | Only the drivers leader (or their substitute) assigns.
+Solo el líder de limpieza (o su sustituto) asigna limpiezas. | Only the cleaning leader (or their substitute) assigns cleanings.
+Solo el líder de limpieza (o su sustituto) publica el orden. | Only the cleaning leader (or their substitute) publishes the order.
+Solo el líder de limpieza (o su sustituto) forma equipos. | Only the cleaning leader (or their substitute) forms teams.
+Solo el líder de limpieza (o su sustituto) deshace equipos. | Only the cleaning leader (or their substitute) splits teams.
+Solo el líder de limpieza (o su sustituto) fija la hora de entrada. | Only the cleaning leader (or their substitute) sets the start time.
+Solo Operación nombra sustitutos. | Only Operations names substitutes.
+Solo Operación revoca sustitutos. | Only Operations revokes substitutes.
+Ya hay un sustituto de {0} en esas fechas. Revócalo primero. | There is already a {0} substitute for those dates. Revoke it first.
+El sustituto tiene que ser un operador activo de {0}. | The substitute must be active staff of {0}.
+Esa sustitución ya habría terminado. | That substitution would already be over.
+Esa sustitución no existe. | That substitution does not exist.
+Esa sustitución ya estaba revocada. | That substitution was already revoked.
+Esa sustitución ya terminó. | That substitution is already over.
+Solo Operación. | Operations only.
 `;
 // ── Idioma: inglés por defecto; botón EN/ES arriba. Traduce lo que se pinta (texto, placeholder, aria-label, title) ──
 const LANG = (() => { try { return localStorage.getItem('opsflow-lang') || 'en'; } catch (_) { return 'en'; } })();
@@ -1380,6 +1418,11 @@ const db = {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return null;
     const { data } = await sb.from('perfiles').select('*').eq('id', user.id).maybeSingle();
+    // OPS-ADM-001: un sustituto vigente trabaja como líder de su departamento hasta la fecha fijada por Operación
+    if (data && data.activo && data.nivel === 'operador') {
+      const s = await sb.rpc('mi_sustitucion').catch(() => ({}));
+      if (s && s.data && s.data.departamento === data.departamento) { data.nivel = 'lider'; data.sustituto = s.data; }
+    }
     return data;
   },
   async personas(){
@@ -1701,22 +1744,27 @@ function mostrarClave(d, clave, titulo){
 
 // ── Navegacion (lideres y Operacion) ──
 let vista = 'inicio';
+// OPS-GLOBAL-AUD-001: cada líder (o su sustituto) asigna solo a su personal; Operación consulta y coordina, no asigna.
+// El servidor lo comprueba igual (34-PEGAR-permisos_sustituciones.sql): esto solo evita enseñar botones que fallarían.
+const asignaDe = dep => perfil.nivel === 'lider' && perfil.departamento === dep;
 function tabsDe(){
   const t = [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
   const op = perfil.nivel === 'operacion', lider = perfil.nivel === 'lider', dep = perfil.departamento;
-  if (op || (lider && dep === 'Limpieza')) t.push(['asignar', 'Asignar'], ['seguimiento', 'Seguimiento']);
+  if (asignaDe('Limpieza')) t.push(['asignar', 'Asignar']);
+  if (op || (lider && dep === 'Limpieza')) t.push(['seguimiento', 'Seguimiento']);
   if (op || (lider && dep === 'Linens')) t.push(['linens', 'Linens']);
   if (op || (lider && dep === 'Bodega')) t.push(['bodega', 'Bodega']);
   if (op || (lider && dep === 'Drivers')) t.push(['drivers', 'Drivers']);
   if (op || (lider && dep === 'Limpieza')) t.push(['tiempos', 'Tiempos']);
-  if (op) t.push(['tablero', 'Tablero'], ['informe', 'Informe'], ['propiedades', 'Propiedades']);
+  if (op) t.push(['tablero', 'Tablero'], ['informe', 'Informe'], ['propiedades', 'Propiedades'], ['sustituciones', 'Sustituciones']);
   return t;
 }
 const puedeCargar = () => perfil.nivel === 'operacion' || (perfil.nivel === 'lider' && perfil.departamento === 'Limpieza');
 function navHTML(){
   if (perfil.nivel === 'operador') return '';
   const tabs = tabsDe();
-  return `<nav class="tabs" aria-label="Secciones">${tabs.map(([k, l]) =>
+  const sust = perfil.sustituto ? `<div class="msg warn">Sustituto temporal del líder de ${esc(perfil.departamento)} hasta el ${esc(fmtFH(perfil.sustituto.hasta))}</div>` : '';
+  return `${sust}<nav class="tabs" aria-label="Secciones">${tabs.map(([k, l]) =>
     `<button data-vista="${k}" ${vista === k ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</nav>`;
 }
 function bindNav(){
@@ -1742,6 +1790,7 @@ function pintarInicio(){
   if (vista === 'drivers') return pintarDrivers();
   if (vista === 'informe') return pintarInforme();
   if (vista === 'seguimiento') return pintarSeguimiento();
+  if (vista === 'sustituciones') return pintarSustituciones();
   return pintarCuenta();
 }
 
@@ -1750,6 +1799,7 @@ const hoyMas = d => { const x = new Date(); x.setDate(x.getDate() + d); return x
 let fechaCk = hoyMas(1);
 const hm = t => (t || '').slice(0, 5);
 const fmtF = f => { const [y, m, d] = f.split('-'); return `${d}/${m}/${y}`; };
+const fmtFH = t => new Date(t).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Malta' });
 async function pintarCheckouts(){
   const lista = await db.checkoutsDia(fechaCk);
   const prio = lista.filter(c => c.prioritario).length;
@@ -2221,6 +2271,66 @@ async function pintarTablero(){
     </section>`;
   bindNav();
   $('tFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarTablero(); } };
+}
+
+// ── Sustituciones (solo Operación): OPS-ADM-001 · quién hace de líder mientras el líder no está ──
+const DEP_SUST = ['Limpieza', 'Linens', 'Drivers'];
+let depSust = 'Limpieza';
+const ahoraLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset(), 0, 0); return d.toISOString().slice(0, 16); };
+async function pintarSustituciones(){
+  const [gente, r] = await Promise.all([db.personas(), db.rpc('sustituciones_lista')]);
+  const lista = r.data || [];
+  const candidatos = gente.filter(g => g.departamento === depSust && g.nivel === 'operador' && g.activo);
+  const ESTADO_S = { vigente: ['en_curso', 'Vigente'], programada: ['asignada', 'Programada'], terminada: ['terminada', 'Terminada'], revocada: ['cancelada', 'Revocada'] };
+  app.innerHTML = `${navHTML()}
+    <section class="card">
+      <h2>Sustituciones</h2>
+      <p class="tag">Cuando falta un líder, Operación nombra a un operador de su mismo departamento. Solo entre esas fechas puede asignar y ver lo que ve el líder. Operación no asigna personal.</p>
+      ${r.error ? `<div class="msg err">No se pudieron leer las sustituciones: ${esc(r.error)}. ¿Está pegado en Supabase el archivo 34-PEGAR-permisos_sustituciones.sql?</div>` : ''}
+      <form id="fSust" novalidate>
+        <label for="suDep">Departamento</label>
+        <select id="suDep">${DEP_SUST.map(d => `<option value="${d}" ${d === depSust ? 'selected' : ''}>${d}</option>`).join('')}</select>
+        <label for="suPer">Sustituto</label>
+        <select id="suPer" required><option value="">${candidatos.length ? 'Elegir…' : 'No hay operadores activos'}</option>${candidatos.map(c => `<option value="${esc(c.id)}">${esc(c.nombre)}${c.zona ? ' · ' + esc(c.zona) : ''}</option>`).join('')}</select>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+          <span><label for="suDesde">Desde</label><input id="suDesde" type="datetime-local" required value="${ahoraLocal()}"></span>
+          <span><label for="suHasta">Hasta</label><input id="suHasta" type="datetime-local" required></span>
+        </div>
+        <label for="suMotivo">Motivo</label>
+        <input id="suMotivo" maxlength="200" autocomplete="off" required>
+        <div id="suMsg"></div>
+        <button class="btn" id="suGo">Nombrar sustituto</button>
+      </form>
+    </section>
+    <section class="card"><h2>Últimos 30 días (${lista.length})</h2>
+      ${lista.length ? `<ul class="pends">${lista.map(s => `<li><span><b>${esc(s.departamento)}</b> · ${esc(s.sustituto)}
+          <br><span class="tag">${esc(fmtFH(s.desde))} → ${esc(fmtFH(s.hasta))} · ${esc(s.motivo)} · nombrado por ${esc(s.nombrado_por)}</span></span>
+        <span>${pill(...ESTADO_S[s.estado])}${['vigente', 'programada'].includes(s.estado) ? ` <button class="btn sm ghost danger" data-revocar="${esc(s.id)}" type="button">Revocar</button>` : ''}</span></li>`).join('')}</ul>`
+        : '<p class="empty">Ninguna sustitución.</p>'}
+    </section>`;
+  bindNav();
+  $('suDep').onchange = e => { depSust = e.target.value; pintarSustituciones(); };
+  $('fSust').onsubmit = async e => {
+    e.preventDefault();
+    const err = m => { $('suMsg').innerHTML = `<div class="msg err" role="alert">${esc(m)}</div>`; $('suGo').disabled = false; };
+    const desde = $('suDesde').value, hasta = $('suHasta').value, motivo = $('suMotivo').value.trim();
+    if (!$('suPer').value) return err('Elige al sustituto.');
+    if (!desde || !hasta) return err('Pon las dos fechas.');
+    if (new Date(hasta) <= new Date(desde)) return err('La fecha "hasta" tiene que ser posterior a "desde".');
+    if (motivo.length < 3) return err('Escribe el motivo.');
+    $('suGo').disabled = true;
+    const r2 = await db.rpc('nombrar_sustituto', { p_departamento: depSust, p_sustituto: $('suPer').value,
+      p_desde: new Date(desde).toISOString(), p_hasta: new Date(hasta).toISOString(), p_motivo: motivo });
+    if (r2.error) return err(r2.error);
+    toast('Sustituto nombrado', 'ok'); pintarSustituciones();
+  };
+  document.querySelectorAll('[data-revocar]').forEach(b => b.onclick = async () => {
+    if (b.dataset.ok !== '1') { b.dataset.ok = '1'; b.textContent = '¿Seguro? Toca otra vez'; return; }
+    b.disabled = true;
+    const r2 = await db.rpc('revocar_sustitucion', { p_id: b.dataset.revocar });
+    if (r2.error) toast(r2.error); else toast('Sustitución revocada', 'ok');
+    pintarSustituciones();
+  });
 }
 
 // ── My day (cleaner) ──
@@ -2810,7 +2920,8 @@ async function pintarDrivers(){
       <p class="tag" style="margin:4px 0 0">Lo que nadie ha cogido en el tablero de zonas. En rojo, más de 2 horas esperando.</p>
       ${sinCoger.length ? `<ul class="pends">${sinCoger.map(t => `<li><span>${t.entrada ? `<span class="pill rojo">Check-in ${esc(t.entrada)}</span> ` : ''}<span class="cod">${esc(t.codigo)}</span> ${esc(queTarea(t))}
           <br><span class="tag" style="${Date.now() - new Date(t.desde) > 2 * 3600000 ? 'color:var(--crit);font-weight:600' : ''}">${esc(t.zona)} · ${esc(haceTxt(t.desde).replace('ago', ''))}</span></span>
-        <span><select data-asig="${esc(t.id)}" aria-label="Asignar a" style="width:auto;padding:6px 8px;font-size:14px"><option value="">Asignar a…</option>${drivers.map(d => `<option value="${esc(d.id)}">${esc(d.nombre)}${d.zona ? ' · ' + esc(d.zona) : ''}</option>`).join('')}</select></span></li>`).join('')}</ul>` : '<p class="empty">Todo tiene driver.</p>'}
+        <span>${asignaDe('Drivers') ? `<select data-asig="${esc(t.id)}" aria-label="Asignar a" style="width:auto;padding:6px 8px;font-size:14px"><option value="">Asignar a…</option>${drivers.map(d => `<option value="${esc(d.id)}">${esc(d.nombre)}${d.zona ? ' · ' + esc(d.zona) : ''}</option>`).join('')}</select>` : '<span class="tag">Sin driver</span>'}</span></li>`).join('')}</ul>` : '<p class="empty">Todo tiene driver.</p>'}
+      ${sinCoger.length && !asignaDe('Drivers') ? '<p class="tag">Solo el líder de drivers (o su sustituto) asigna.</p>' : ''}
       ${cogidas.length ? `<h3 style="margin:14px 0 0;font-size:16px">Cogidas (${cogidas.length})</h3><ul class="pends">${cogidas.map(t => `<li><span><span class="cod">${esc(t.codigo)}</span> ${esc(queTarea(t))}</span><span class="tag">${esc(t.tomado_por)}${t.asignado ? ' (asignada)' : ''}</span></li>`).join('')}</ul>` : ''}
     </section>
     ${rb.error ? '' : bolsasHTML(rb.data || [], false)}
