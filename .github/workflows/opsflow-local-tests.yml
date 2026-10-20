@@ -1,0 +1,19 @@
+name: OpsFlow local tests (safe)
+on:
+  push:
+    branches: [piloto-norte-3dep]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Stage 1 permissions
+        run: node tests/permisos.test.cjs
+      - name: Stage 2 linen bags
+        run: node tests/bolsas.test.cjs
