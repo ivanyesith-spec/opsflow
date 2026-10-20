@@ -138,6 +138,9 @@ begin
     select nombre into v_quien from public.perfiles where id = v.driver;
     raise exception 'Bag % is already with %.', v_cod, v_quien;
   end if;
+  if v.estado = 'en_camion' and v.driver = (select auth.uid()) then
+    return jsonb_build_object('id',v.id,'codigo',v_cod,'ya_registrada',true);
+  end if;
   update public.bolsas set estado = 'en_camion', driver = (select auth.uid()), recogida_en = coalesce(recogida_en, now()),
     historial = coalesce(historial, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('tipo','recogida','por',(select auth.uid()),'en',now())) where id = v.id;
   perform public._evento('bolsa recogida en linens', v.limpieza_id, null);
