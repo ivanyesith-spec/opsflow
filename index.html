@@ -2231,11 +2231,12 @@ async function pintarAsignar(){
 
 // ── Linens (lider de linens y Operacion) ──
 async function pintarLinens(){
-  const [pends, rb, resumen] = await Promise.all([
+  const [pends, rb] = await Promise.all([
     db.pendientesDia(fechaCampo, 'linens'),
-    db.rpc('bolsas_dia', { p_fecha: fechaCampo }),
-    db.rpc('resumen_linens_dia', { p_fecha: fechaCampo })
+    db.rpc('bolsas_dia', { p_fecha: fechaCampo })
   ]);
+  // bolsas_dia crea las bolsas nuevas: consultar el resumen DESPUÉS evita cifras atrasadas.
+  const resumen = await db.rpc('resumen_linens_dia', { p_fecha: fechaCampo });
   const tot = resumen.data || {};
   const autorizado = perfil.departamento === 'Linens' && perfil.nivel === 'lider';
   const cantidades = Object.entries(tot.cantidades_confirmadas || {}).filter(([, n]) => n > 0);
@@ -2782,8 +2783,8 @@ function abrirEntregaBolsa(b){
 }
 
 // Linens: bolsas del dia (una por limpieza), preparar e imprimir etiquetas
-const BOLSA_ES = { por_preparar: 'Por preparar', preparada: 'Preparada', en_camion: 'En camión', entregada: 'Entregada' };
-const BOLSA_PILL = { por_preparar: 'abierto', preparada: 'preparado', en_camion: 'entregado', entregada: 'cerrado' };
+const BOLSA_ES = { por_preparar: 'Por preparar', preparada: 'Preparada', en_camion: 'En camión', entregada: 'Entregada', recibida: 'Recibida' };
+const BOLSA_PILL = { por_preparar: 'abierto', preparada: 'preparado', en_camion: 'entregado', entregada: 'cerrado', recibida: 'cerrado' };
 function bolsasHTML(bs, linens){
   const n = e => bs.filter(b => b.estado === e).length;
   const autorizado = perfil.departamento === 'Linens' && perfil.nivel === 'lider';
@@ -2795,7 +2796,7 @@ function bolsasHTML(bs, linens){
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}
           ${b.estado !== 'por_preparar' && b.contenido ? `<br><span class="tag">Contenido: ${esc(contenidoTxt(b.contenido))}</span>` : ''}
           ${b.entrega_sin_confirmar ? '<br><span class="pill rojo">El driver no confirmó la entrega</span>' : ''}
-          ${b.estado === 'recibida' && Object.keys(b.diferencia || {}).length ? `<br><span class="pill rojo">Diferencias: ${esc(diferenciasTxt(b.diferencia))}</span>` : ''}</span>
+          ${b.estado === 'recibida' && Object.keys(b.diferencia || {}).length ? `<br><span class="${b.pendiente_estado === 'cerrado' || !Object.values(b.diferencia).some(n => n < 0) ? 'pill' : 'pill rojo'}">${b.pendiente_estado === 'cerrado' ? 'Faltante resuelto' : Object.values(b.diferencia).some(n => n < 0) ? 'Faltante pendiente' : 'Sobrante registrado'}: ${esc(diferenciasTxt(b.diferencia))}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
           ${linens && autorizado && ['por_preparar','preparada'].includes(b.estado) ? `<button class="btn sm" data-beditar="${esc(b.id)}">${b.estado === 'preparada' ? 'Corregir contenido' : 'Preparar contenido'}</button>` : ''}
           ${['preparada','en_camion','entregada','recibida'].includes(b.estado) ? `<button class="btn sm ghost" data-bhist="${esc(b.id)}">Historial</button>` : ''}
@@ -3155,6 +3156,14 @@ async function pintarLinensCheck(l){
   const reciboClave = 'opsflow-recepcion-' + bolsa.id;
   let id = localStorage.getItem(reciboClave);
   if (!id) { id = crypto.randomUUID(); localStorage.setItem(reciboClave, id); }
+  const reciboEnCola = leerCola().some(x => x.fn === 'recibir_bolsa' && x.args?.p_bolsa === bolsa.id);
+  if (reciboEnCola) {
+    app.innerHTML = `<section class="card"><button class="link" id="lcVolver">← Back</button>
+      <h2>Receipt waiting for internet</h2><div class="msg warn">The receipt is safely queued on this phone.
+      Its original quantities will be sent automatically when connection returns. Do not submit another receipt.</div></section>`;
+    $('lcVolver').onclick = () => { abierta = null; pintarMiDia(); };
+    return;
+  }
   app.innerHTML = `
     <section class="card">
       <button class="link" id="lcVolver" style="margin:0">← All apartments</button>
