@@ -349,6 +349,7 @@ begin
       'comentario', b.comentario, 'incidencia', b.incidencia,
       'contenido', b.contenido, 'recibido', b.recibido, 'diferencia', b.diferencia,
       'recibida_por', rp.nombre, 'recibida_en', b.recibida_en, 'entrega_sin_confirmar', b.entrega_sin_confirmar,
+      'pendiente_estado', (select pe.estado::text from public.pendientes pe where pe.bolsa_id=b.id and pe.tipo::text='linens' limit 1),
       'camas_dobles', p.camas_dobles, 'camas_indiv', p.camas_indiv, 'sofas_cama', p.sofas_cama, 'banos', p.banos,
       'foto', (select f.ruta from public.fotos_cierre f where f.limpieza_id = b.limpieza_id and f.sala = 'bolsa'))
       order by (c.hora_entrada is not null) desc, c.hora_entrada, p.codigo)
