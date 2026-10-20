@@ -2231,11 +2231,32 @@ async function pintarAsignar(){
 
 // ── Linens (lider de linens y Operacion) ──
 async function pintarLinens(){
-  const [pends, rb] = await Promise.all([db.pendientesDia(fechaCampo, 'linens'), db.rpc('bolsas_dia', { p_fecha: fechaCampo })]);
+  const [pends, rb, resumen] = await Promise.all([
+    db.pendientesDia(fechaCampo, 'linens'),
+    db.rpc('bolsas_dia', { p_fecha: fechaCampo }),
+    db.rpc('resumen_linens_dia', { p_fecha: fechaCampo })
+  ]);
+  const tot = resumen.data || {};
+  const autorizado = perfil.departamento === 'Linens' && perfil.nivel === 'lider';
+  const cantidades = Object.entries(tot.cantidades_confirmadas || {}).filter(([, n]) => n > 0);
+  const cuadro = `<section class="card"><h2>Plan diario · ${esc(fechaCampo)}</h2>
+    ${resumen.error ? `<p class="tag">Demanda pendiente de activar: ${esc(resumen.error)}</p>` : `
+    <div class="tiles">
+      <div class="tile"><b>${tot.checkouts || 0}</b><span>Checkouts</span></div>
+      <div class="tile"><b>${tot.sin_preparar || 0}</b><span>Por preparar</span></div>
+      <div class="tile"><b>${tot.preparadas || 0}</b><span>Preparadas</span></div>
+      <div class="tile"><b>${tot.en_camion || 0}</b><span>En camión</span></div>
+      <div class="tile"><b>${tot.entregadas || 0}</b><span>Entregadas</span></div>
+      <div class="tile"><b>${tot.recibidas || 0}</b><span>Recibidas</span></div>
+      <div class="tile"><b>${tot.diferencias || 0}</b><span>Con diferencias</span></div>
+    </div>
+    <p class="tag">Las cantidades proceden de bolsas confirmadas; las bolsas sin preparar todavía no tienen cantidades definidas. No equivale al inventario disponible.</p>
+    ${cantidades.length ? `<ul class="pends">${cantidades.map(([k, n]) => `<li><span>${esc((LINENS.find(i => i[0] === k) || [k,k,k])[2])}</span><b>${esc(n)}</b></li>`).join('')}</ul>` : '<p class="tag">Aún no hay cantidades confirmadas.</p>'}`}
+  </section>`;
   const abiertos = pends.filter(p => p.estado === 'abierto');
-  app.innerHTML = `${navHTML()}
+  app.innerHTML = `${navHTML()}${cuadro}
     <section class="card">
-      <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
+      <div class="barra"><h2>Linens · faltantes pendientes (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
       ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
           <div class="barra"><span>${p.prioritario ? '<span class="pill rojo">Check-in hoy</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> <b>${esc(p.propiedades?.nombre)}</b> <span class="tag">· ${esc(p.propiedades?.pueblo)}</span></span>
             ${pill(p.estado, ESTADO_ES[p.estado])}</div>
@@ -2244,7 +2265,7 @@ async function pintarLinens(){
         </div>`).join('') : '<p class="empty">No hay pendientes de linens este día.</p>'}
     </section>
     ${rb.error ? `<section class="card"><div class="msg err">${esc(rb.error)}</div></section>` : bolsasHTML(rb.data || [], true)}`;
-  bindNav(); bindBolsas();
+  bindNav(); bindBolsas(rb.data || []);
   $('lFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarLinens(); } };
   document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
 }
@@ -2765,21 +2786,38 @@ const BOLSA_ES = { por_preparar: 'Por preparar', preparada: 'Preparada', en_cami
 const BOLSA_PILL = { por_preparar: 'abierto', preparada: 'preparado', en_camion: 'entregado', entregada: 'cerrado' };
 function bolsasHTML(bs, linens){
   const n = e => bs.filter(b => b.estado === e).length;
+  const autorizado = perfil.departamento === 'Linens' && perfil.nivel === 'lider';
   return `<section class="card">
       <div class="barra"><h2>Bolsas de linens (${bs.length})</h2>${linens ? '<button class="btn sm ghost" id="bEtiq">Imprimir etiquetas QR</button>' : ''}</div>
-      <div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span></div>
+      <div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span><span><b>${n('recibida')}</b> recibidas</span></div>
       ${bs.length ? `<ul class="pends">${bs.map(b => `<li><span>${b.entrada ? `<span class="pill rojo">Check-in ${esc(b.entrada)}</span> ` : ''}<span class="cod">${esc(b.codigo)}</span> ${esc(b.nombre)} <span class="tag">· ${esc(b.zona)}</span>
           ${b.driver ? `<br><span class="tag">${esc(b.driver)}${b.entregada_en ? ' · entregada ' + esc(new Date(b.entregada_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) : ''}${b.comentario ? ' · «' + esc(b.comentario) + '»' : ''}</span>` : ''}
-          ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
+          ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}
+          ${b.estado !== 'por_preparar' && b.contenido ? `<br><span class="tag">Contenido: ${esc(contenidoTxt(b.contenido))}</span>` : ''}
+          ${b.entrega_sin_confirmar ? '<br><span class="pill rojo">El driver no confirmó la entrega</span>' : ''}
+          ${b.estado === 'recibida' && Object.keys(b.diferencia || {}).length ? `<br><span class="pill rojo">Diferencias: ${esc(diferenciasTxt(b.diferencia))}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
-          ${linens && b.estado === 'por_preparar' ? `<button class="btn sm" data-bprep="${esc(b.id)}">Preparada</button>` : ''}
-          ${linens && b.estado === 'preparada' ? `<button class="btn sm ghost" data-bdes="${esc(b.id)}">Deshacer</button>` : ''}
+          ${linens && autorizado && ['por_preparar','preparada'].includes(b.estado) ? `<button class="btn sm" data-beditar="${esc(b.id)}">${b.estado === 'preparada' ? 'Corregir contenido' : 'Preparar contenido'}</button>` : ''}
+          ${['preparada','en_camion','entregada','recibida'].includes(b.estado) ? `<button class="btn sm ghost" data-bhist="${esc(b.id)}">Historial</button>` : ''}
           ${b.foto ? `<button class="btn sm ghost" data-bfoto="${esc(b.foto)}">Foto</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">No hay limpiezas este día.</p>'}
     </section>`;
 }
-function bindBolsas(repintar){
-  document.querySelectorAll('[data-bprep]').forEach(b => b.onclick = () => { b.disabled = true; accion('preparar_bolsa', { p_bolsa: b.dataset.bprep, p_lista: true }, 'Bolsa preparada'); });
-  document.querySelectorAll('[data-bdes]').forEach(b => b.onclick = () => { b.disabled = true; accion('preparar_bolsa', { p_bolsa: b.dataset.bdes, p_lista: false }, 'Vuelve a por preparar'); });
+function bindBolsas(bs = []){
+  document.querySelectorAll('[data-beditar]').forEach(b => b.onclick = () => {
+    const bolsa = bs.find(x => x.id === b.dataset.beditar);
+    if (bolsa) editarContenidoBolsa(bolsa);
+  });
+  document.querySelectorAll('[data-bhist]').forEach(b => b.onclick = async () => {
+    const r = await db.rpc('historial_bolsa', { p_bolsa: b.dataset.bhist });
+    if (r.error) return toast(r.error);
+    const eventos = r.data || [];
+    $('vTitulo').textContent = 'Historial de la bolsa';
+    $('vCerrar').onclick = () => $('dVer').close();
+    $('vCuerpo').innerHTML = eventos.length ?
+      `<ul class="pends">${eventos.map(x => `<li><span><b>${esc(x.tipo)}</b> · ${esc(x.en ? fmtFH(x.en) : '')}<br><span class="tag">${esc(x.por || '')} ${esc(x.contenido ? contenidoTxt(x.contenido) : x.diferencia ? diferenciasTxt(x.diferencia) : x.motivo || '')}</span></span></li>`).join('')}</ul>` :
+      '<p class="tag">No hay eventos registrados para esta bolsa.</p>';
+    $('dVer').showModal();
+  });
   document.querySelectorAll('[data-bfoto]').forEach(b => b.onclick = () => verFoto(b.dataset.bfoto, 'Entrega de la bolsa'));
   if ($('bEtiq')) $('bEtiq').onclick = () => imprimirEtiquetas(fechaCampo);
 }
@@ -2860,7 +2898,7 @@ const idb = (() => {
   return { put: (k, v) => tx('readwrite', s => s.put(v, k)), get: k => tx('readonly', s => s.get(k)), del: k => tx('readwrite', s => s.delete(k)) };
 })();
 function encolar(e){
-  const k = e.tipo === 'foto' ? `foto:${e.id}/${e.sala}` : `${e.fn}:${e.args.p_id}:${e.args.p_paso ?? ''}`;
+  const k = e.tipo === 'foto' ? `foto:${e.id}/${e.sala}` : e.fn === 'recibir_bolsa' ? `recibir:${e.args.p_bolsa}` : `${e.fn}:${e.args.p_id}:${e.args.p_paso ?? ''}`;
   guardarCola([...leerCola().filter(x => x.k !== k), { ...e, k }]);
   avisoCola();
 }
@@ -2880,6 +2918,7 @@ async function vaciarCola(){
       if (r.error && sinRed(r.error)) break;          // sigue sin señal: se intenta luego
       if (r.error) toast(`Not saved: ${r.error}`);   // el servidor lo rechazo: se descarta
       guardarCola(leerCola().filter(x => x.k !== e.k));
+      if (!r.error && e.fn === 'recibir_bolsa') { try { localStorage.removeItem('opsflow-recepcion-' + e.args.p_bolsa); } catch (_) {} }
     }
   } finally { vaciando = false; avisoCola(); }
 }
@@ -3051,6 +3090,35 @@ const LINENS = [['sabana_doble', 'Double sheet', 'Sábana doble'], ['sabana_senc
   ['toalla_cocina', 'Kitchen towel', 'Toalla de cocina'], ['esponja', 'Sponge', 'Esponja'], ['papel_higienico', 'Toilet paper', 'Papel higiénico']];
 const itemsTxt = (items, lang) => (items || []).map(x => { const k = LINENS.find(a => a[0] === x.item); return `${x.cantidad} × ${k ? k[lang === 'es' ? 2 : 1] : x.item}`; }).join(' · ');
 const itemsDe = cant => LINENS.filter(([k]) => cant[k] > 0).map(([k]) => ({ item: k, cantidad: cant[k] }));
+const contenidoTxt = c => LINENS.filter(([k]) => Number(c?.[k]) > 0)
+  .map(([k,en,es]) => `${c[k]} × ${idioma() === 'es' ? es : en}`).join(' · ') || 'No items';
+const diferenciasTxt = c => LINENS.filter(([k]) => Number(c?.[k]) !== 0 && c?.[k] != null)
+  .map(([k,en,es]) => `${c[k] > 0 ? '+' : ''}${c[k]} ${idioma() === 'es' ? es : en}`).join(' · ');
+// Preparación manual: no inventar cantidades según temporada ni tipo de apartamento.
+function editarContenidoBolsa(b){
+  const cant = { ...(b.contenido || {}) };
+  app.innerHTML = `<section class="card"><button class="link" id="bolVolver">← Linens</button>
+    <h1>${esc(b.codigo)} · contenido de bolsa</h1>
+    <p class="tag">Checkout: ${esc(fechaCampo)} · ${esc(b.nombre)} · ${esc(b.zona)}.
+    Cada cantidad debe ser confirmada por Linens según las necesidades reales del apartamento.</p>
+    <p class="tag">Características: ${b.camas_dobles || 0} camas dobles,
+    ${b.camas_indiv || 0} individuales, ${b.sofas_cama || 0} sofás cama, ${b.banos || 0} baños.</p>
+    <h2>Contenido preparado</h2><div id="bolItems"></div>
+    <div id="bolMsg"></div><button class="btn" id="bolGuardar">Confirmar bolsa preparada</button>
+    <button class="btn ghost" id="bolBorrador">Guardar sin preparar</button></section>`;
+  pintarItems($('bolItems'), cant, () => {});
+  $('bolVolver').onclick = () => pintarLinens();
+  const guardar = async lista => {
+    const boton = lista ? $('bolGuardar') : $('bolBorrador');
+    boton.disabled = true;
+    const r = await db.rpc('guardar_contenido_bolsa', { p_bolsa: b.id, p_contenido: cant, p_lista: lista });
+    if (r.error) { $('bolMsg').innerHTML = `<div class="msg err">${esc(r.error)}</div>`; boton.disabled = false; return; }
+    toast(lista ? 'Bolsa preparada con contenido confirmado' : 'Contenido guardado', 'ok');
+    pintarLinens();
+  };
+  $('bolGuardar').onclick = () => guardar(true);
+  $('bolBorrador').onclick = () => guardar(false);
+}
 // Lista con − cantidad + para cada articulo
 function pintarItems(caja, cant, alCambiar){
   const es = idioma() === 'es';
@@ -3064,38 +3132,74 @@ function pintarItems(caja, cant, alCambiar){
   });
 }
 // Revision de la bolsa de linens: obligatoria antes de la checklist
-function pintarLinensCheck(l){
-  const cant = {};
+async function pintarLinensCheck(l){
+  const cant = {}, extra = {};
+  const rb = await db.rpc('bolsa_mia', { p_limpieza: l.id });
+  if (rb.error) {
+    app.innerHTML = `<section class="card"><button class="link" id="lcVolver">← Back</button>
+      <h2>Bag check unavailable</h2><div class="msg err">${esc(rb.error)}</div>
+      <p class="tag">Contact your Cleaning Leader. Do not confirm a bag without verified data.</p></section>`;
+    $('lcVolver').onclick = () => { abierta = null; pintarMiDia(); };
+    return;
+  }
+  const bolsa = rb.data;
+  if (!bolsa || !bolsa.id || bolsa.estado === 'por_preparar' || bolsa.estado === 'preparada'
+      || !Object.values(bolsa.contenido || {}).some(n => Number(n) > 0)) {
+    app.innerHTML = `<section class="card"><button class="link" id="lcVolver">← Back</button>
+      <h2>Bag not yet ready for receipt</h2>
+      <p>The bag must be prepared with its contents and collected by the driver first.
+      Ask your leader for help. You can still report extra linen needs from your apartment list.</p></section>`;
+    $('lcVolver').onclick = () => { abierta = null; pintarMiDia(); };
+    return;
+  }
+  const reciboClave = 'opsflow-recepcion-' + bolsa.id;
+  let id = localStorage.getItem(reciboClave);
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem(reciboClave, id); }
   app.innerHTML = `
     <section class="card">
       <button class="link" id="lcVolver" style="margin:0">← All apartments</button>
       <h1 style="margin-top:8px">Linens check</h1>
       <p class="sub" style="margin-bottom:0"><span class="cod">${esc(l.codigo)}</span> · ${esc(l.nombre)}</p>
-      <p class="tag">Open the linens bag now. Tap + on everything that is missing. Linens and the driver get <b>one</b> order with all of it. The checklist opens after this.</p>
+      <p class="tag">Expected content: <b>${esc(contenidoTxt(bolsa.contenido))}</b>.
+      Count what is physically inside. Mark anything missing or extra before confirming.</p>
+      ${bolsa.estado === 'en_camion' ? '<div class="msg warn">The driver did not confirm delivery. Your receipt will notify Drivers Leader.</div>' : ''}
     </section>
     <section class="card"><h2>What is missing?</h2><div id="lcItems"></div></section>
+    <section class="card"><h2>Any extras?</h2><p class="tag">Extras are recorded without automatically opening a new task.</p><div id="lcExtra"></div></section>
     <section class="card pie">
       <div id="lcMsg"></div>
-      <button class="btn" id="lcEnviar" disabled>Send report</button>
-      <button class="btn ghost" id="lcNada">Nothing missing</button>
+      <button class="btn" id="lcEnviar">Confirm receipt with differences</button>
+      <button class="btn ghost" id="lcNada">Everything received correctly</button>
     </section>`;
-  const actual = () => { const it = itemsDe(cant), n = it.reduce((a, x) => a + x.cantidad, 0);
-    $('lcEnviar').disabled = !n; $('lcEnviar').textContent = n ? `Send report (${n} item${n > 1 ? 's' : ''})` : 'Send report'; };
-  pintarItems($('lcItems'), cant, actual);
+  const valid = () => LINENS.every(([k]) => (cant[k] || 0) <= (bolsa.contenido?.[k] || 0)
+    && !((cant[k] || 0) > 0 && (extra[k] || 0) > 0));
+  const act = () => { $('lcEnviar').disabled = !valid() || !Object.values(cant).some(n => n > 0) && !Object.values(extra).some(n => n > 0); };
+  pintarItems($('lcItems'), cant, act);
+  pintarItems($('lcExtra'), extra, act);
+  act();
   $('lcVolver').onclick = () => { abierta = null; pintarMiDia(); };
-  const fallo = m => { $('lcMsg').innerHTML = `<div class="msg err" role="alert">${esc(m)}</div>`; $('lcNada').disabled = false; actual(); };
-  $('lcEnviar').onclick = async () => {
-    $('lcEnviar').disabled = $('lcNada').disabled = true; $('lcEnviar').textContent = 'Sending…';
-    const r = await db.rpc('reportar_linens', { p_limpieza: l.id, p_items: itemsDe(cant) });
-    if (r.error) return fallo(r.error);
-    toast('Sent to linens. Now the checklist.', 'ok'); window.scrollTo(0, 0); pintarChecklist(l);
-  };
-  $('lcNada').onclick = async () => {
+  const recibir = async limpio => {
+    if (!limpio && !valid()) return toast('A missing amount cannot exceed the bag contents.');
     $('lcEnviar').disabled = $('lcNada').disabled = true;
-    const r = await db.rpc('linens_ok', { p_limpieza: l.id });
-    if (r.error) return fallo(r.error);
+    const args = { p_bolsa: bolsa.id, p_faltantes: limpio ? {} : cant,
+      p_sobrantes: limpio ? {} : extra, p_idempotencia: id };
+    const r = leerCola().some(x => x.fn === 'recibir_bolsa' && x.args?.p_bolsa === bolsa.id)
+      ? { offline: true } : await db.rpc('recibir_bolsa', args);
+    if (r.offline) {
+      encolar({ tipo: 'rpc', fn: 'recibir_bolsa', args });
+      $('lcMsg').innerHTML = '<div class="msg warn">Receipt saved on this phone; it will sync when internet returns. Do not submit it again.</div>';
+      return;
+    }
+    if (r.error) {
+      $('lcMsg').innerHTML = `<div class="msg err">${esc(r.error)}</div>`;
+      $('lcEnviar').disabled = false; $('lcNada').disabled = false; return;
+    }
+    localStorage.removeItem(reciboClave);
+    toast(r.data?.ya_registrada ? 'Receipt already recorded' : 'Bag receipt recorded', 'ok');
     window.scrollTo(0, 0); pintarChecklist(l);
   };
+  $('lcEnviar').onclick = () => recibir(false);
+  $('lcNada').onclick = () => recibir(true);
 }
 const UTILES = [['escoba', 'Broom', 'Escoba'], ['squeegee', 'Squeegee', 'Squeegee'], ['recogedor', 'Dustpan', 'Recogedor']];
 const utilesEN = t => String(t || '').replace(/^Falta:/, 'Missing:').replace(/escoba/g, 'broom').replace(/recogedor/g, 'dustpan');
@@ -3309,7 +3413,7 @@ async function pintarChecklist(l, datos){
     $('ckLlegar').onclick = () => abrirLlegada(l);
     return;
   }
-  if (!r.data.linens_revisado) return pintarLinensCheck(l);
+  if (!r.data.linens_revisado) return await pintarLinensCheck(l);
   const equipo = (ck.equipo || []).length > 1, salasDe = ck.salas || {};
   const ajena = s => salasDe[s] && !salasDe[s].mio;   // sala de un compañero: se ve, no se toca
   const salaChip = s => !equipo ? '' : s === 'final' ? '<span class="pill">Shared</span>'
