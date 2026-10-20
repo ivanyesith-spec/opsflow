@@ -79,7 +79,7 @@ begin
            ('TEST-E2B','Bolsa etapa 2 B','Norte','Prueba',true);
     perform pg_temp.como_bolsa(o);
     perform public.cargar_checkouts((now() at time zone 'Europe/Malta')::date,
-      'TEST-E2A 10:00\nTEST-E2B 10:00',true);
+      E'TEST-E2A 10:00\nTEST-E2B 10:00',true);
     perform pg_temp.yo_bolsa();
     select id into la from public.limpiezas where propiedad_id=(select id from public.propiedades where codigo='TEST-E2A');
     select id into lb from public.limpiezas where propiedad_id=(select id from public.propiedades where codigo='TEST-E2B');
