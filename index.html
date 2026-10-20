@@ -2917,7 +2917,12 @@ async function vaciarCola(){
         if (!r.error) await idb.del(`${e.id}/${e.sala}`).catch(() => {});
       } else r = await db.rpc(e.fn, e.args);
       if (r.error && sinRed(r.error)) break;          // sigue sin señal: se intenta luego
-      if (r.error) toast(`Not saved: ${r.error}`);   // el servidor lo rechazo: se descarta
+      if (r.error && e.fn === 'recibir_bolsa') {
+        // Nunca perder silenciosamente una recepción de bolsa: conservar los datos y el UUID.
+        toast('Receipt still pending. Contact your Cleaning Leader: ' + r.error);
+        break;
+      }
+      if (r.error) toast(`Not saved: ${r.error}`);   // otras acciones mantienen flujo anterior
       guardarCola(leerCola().filter(x => x.k !== e.k));
       if (!r.error && e.fn === 'recibir_bolsa') { try { localStorage.removeItem('opsflow-recepcion-' + e.args.p_bolsa); } catch (_) {} }
     }
