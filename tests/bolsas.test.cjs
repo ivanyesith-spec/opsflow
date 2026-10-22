@@ -14,6 +14,17 @@ check('Todos los scripts JavaScript de index.html compilan',()=>{
   assert.ok(scripts.length>0);
   for(let i=0;i<scripts.length;i++)new vm.Script(scripts[i],{filename:'index.html#'+i});
 });
+check('PILOTO: el frontend solo apunta a Supabase de PRUEBAS',()=>{
+  assert.match(html,/const PILOT_PROJECT_REF = 'yxgilbgwuxmlbdrbfisi'/);
+  assert.match(html,/PILOTO DE PRUEBAS/);
+  assert.match(html,/SUPABASE_URL = 'https:\/\/' \+ PILOT_PROJECT_REF/);
+  assert.match(html,/storage:window\.sessionStorage/);
+  assert.match(html,/pilotStorage/);
+  assert.match(html,/!PILOT_MODE/);
+  assert.doesNotMatch(html,/zxsiantglodsqqvigndk/);
+  assert.doesNotMatch(html,/sb_publishable_f8nqvfRG75TZLMClqT2uZw_mch9Qcid/);
+  assert.doesNotMatch(html,/serviceWorker\.register\('sw\.js'\)/);
+});
 check('SQL36 mantiene guardas de entorno y rechaza producción',()=>{
   assert.match(migration,/opsflow_entorno/);assert.match(migration,/v_tipo is distinct from 'pruebas'/);
   assert.match(migration,/if v = '[a-z]{20}' then/);
