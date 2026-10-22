@@ -1,0 +1,25 @@
+name: OpsFlow pilot HTTPS smoke
+on:
+  push:
+    branches: [piloto-norte-3dep]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pilot-http:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Supabase test-only HTTPS preview
+        run: |
+          set -euo pipefail
+          URL='https://yxgilbgwuxmlbdrbfisi.supabase.co/functions/v1/opsflow-piloto'
+          code="$(curl -sSL --max-time 35 -w '%{http_code}' "$URL" -o /tmp/opsflow-pilot.html)"
+          echo "Preview HTTP status: $code"
+          if [ "$code" != 200 ]; then
+            head -c 500 /tmp/opsflow-pilot.html
+            exit 1
+          fi
+          grep -q 'PILOTO DE PRUEBAS' /tmp/opsflow-pilot.html
+          grep -q "const PILOT_PROJECT_REF = 'yxgilbgwuxmlbdrbfisi'" /tmp/opsflow-pilot.html
+          ! grep -q 'zxsiantglodsqqvigndk' /tmp/opsflow-pilot.html
+          echo "Pilot HTTPS is reachable and test-only"
