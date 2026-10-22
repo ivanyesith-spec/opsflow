@@ -24,3 +24,15 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Stage 2 isolated Chromium UI tests
         run: node tests/ui-bolsas.test.cjs
+
+      - name: Validate isolated HTTPS pilot endpoint
+        run: |
+          set -euo pipefail
+          URL='https://yxgilbgwuxmlbdrbfisi.supabase.co/functions/v1/opsflow-piloto'
+          curl --fail-with-body --retry 3 --retry-all-errors --max-time 35 -sS "$URL" -o /tmp/opsflow-pilot.html
+          grep -q 'PILOTO DE PRUEBAS' /tmp/opsflow-pilot.html
+          grep -q "const PILOT_PROJECT_REF = 'yxgilbgwuxmlbdrbfisi'" /tmp/opsflow-pilot.html
+          if grep -q 'zxsiantglodsqqvigndk' /tmp/opsflow-pilot.html; then
+            echo 'ERROR: production reference found in HTTPS pilot'; exit 1
+          fi
+          echo 'OK: public HTTPS test preview, production ID absent'
