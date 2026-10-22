@@ -48,8 +48,11 @@ alter table public.bolsas add constraint bolsas_estado_check
   check (estado in ('por_preparar','preparada','en_camion','entregada','recibida'));
 -- Vincular únicamente los faltantes nacidos de la recepción (los linen needed manuales siguen independientes)
 alter table public.pendientes add column if not exists bolsa_id uuid references public.bolsas(id);
+-- La relación bolsa_id solo se utiliza para faltantes de recepción; cualquier pendiente
+-- con bolsa_id es único. Evitar castear el enum tipo a texto en el predicado del índice:
+-- enum_out es STABLE (no IMMUTABLE) y PostgreSQL rechazaría el índice parcial.
 create unique index if not exists pendientes_un_faltante_por_bolsa
-  on public.pendientes (bolsa_id) where bolsa_id is not null and tipo::text = 'linens';
+  on public.pendientes (bolsa_id) where bolsa_id is not null;
 
 -- B. Validación en servidor de los 11 artículos del catálogo, cantidades enteras 0..50
 create or replace function public._bolsa_validar_contenido(p_items jsonb, p_exige_articulos boolean default false)
