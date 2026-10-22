@@ -107,11 +107,15 @@ begin
        pg_temp.falla_bolsa(format('select public.guardar_contenido_bolsa(%L,%L::jsonb,true)',
           a,'{"sabana_doble":51}'),'22023','cantidad')]);
     x:=public.guardar_contenido_bolsa(a,'{"sabana_doble":2,"toalla_grande":3}'::jsonb,true);
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(5,'Linens prepara con contenido y cantidades',x->>'estado'='preparada'
       and (select contenido->>'sabana_doble' from public.bolsas where id=a)='2');
+    perform pg_temp.como_bolsa(ll);
     perform public.guardar_contenido_bolsa(a,'{"sabana_doble":2,"toalla_grande":2}'::jsonb,true);
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(6,'Linens corrige antes del escaneo con historial',
        (select jsonb_array_length(historial)>=2 and contenido->>'toalla_grande'='2' from public.bolsas where id=a));
+    perform pg_temp.como_bolsa(ll);
     perform public.guardar_contenido_bolsa(b,'{"sabana_doble":1,"toalla_grande":2}'::jsonb,true);
     perform pg_temp.como_bolsa(dl);
     R:=R||pg_temp.errores_bolsa(7,'Driver no edita contenido',array[
@@ -122,6 +126,7 @@ begin
     select qr into err from public.bolsas_etiquetas((now() at time zone 'Europe/Malta')::date) where codigo='TEST-E2A';
     perform pg_temp.como_bolsa(dl);
     perform public.escanear_bolsa(err);
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(8,'Driver recibe custodia por QR',
       (select estado='en_camion' and driver=dl and recogida_en is not null from public.bolsas where id=a));
     perform pg_temp.como_bolsa(ll);
@@ -145,6 +150,7 @@ begin
     key1:=gen_random_uuid();
     x:=public.recibir_bolsa(a,'{"toalla_grande":1}'::jsonb,'{}'::jsonb,key1);
     order_id:=(x->>'pendiente_id')::uuid;
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(13,'Cleaner recibe aunque driver no marcó la entrega',
       x->>'estado'='recibida' and (x->>'entrega_sin_confirmar')::boolean
       and (select entrega_sin_confirmar from public.bolsas where id=a));
@@ -152,7 +158,9 @@ begin
       order_id is not null and (select count(*) from public.pendientes where bolsa_id=a)=1);
     R:=R||pg_temp.prueba_bolsa(15,'Cantidades y diferencias correctas',
       (select recibido->>'toalla_grande'='1' and diferencia->>'toalla_grande'='-1' from public.bolsas where id=a));
+    perform pg_temp.como_bolsa(cl);
     x:=public.recibir_bolsa(a,'{}'::jsonb,'{}'::jsonb,key1);
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(16,'Reintento idempotente no duplica faltante',
       (x->>'ya_registrada')::boolean and (select count(*) from public.pendientes where bolsa_id=a)=1);
     perform pg_temp.como_bolsa(ll);
@@ -164,6 +172,7 @@ begin
     perform pg_temp.como_bolsa(cl);
     key2:=gen_random_uuid();
     x:=public.recibir_bolsa(b,'{}'::jsonb,'{"toalla_cocina":1}'::jsonb,key2);
+    perform pg_temp.yo_bolsa();
     R:=R||pg_temp.prueba_bolsa(17,'Sobrante queda registrado sin pendiente',
       x->'diferencia'->>'toalla_cocina'='1'
       and (select count(*) from public.pendientes where bolsa_id=b)=0);
