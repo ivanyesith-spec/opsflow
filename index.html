@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
-<title>OpsFlow</title>
-<link rel="manifest" href="manifest.json">
+<title>OpsFlow · PILOTO DE PRUEBAS</title>
+<!-- PILOTO: no instalar sobre la aplicación de producción. -->
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F6FA">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0A1628">
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  // PILOTO: no registrar Service Worker de producción ni PWA.
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,8 +283,12 @@ a.btn.go{min-width:64px}
 .foto.ajena{opacity:.55;cursor:not-allowed}
 </style>
 </head>
-<body>
+<body data-opsflow-env="pruebas">
 <div class="wrap">
+  <aside id="pilotoAviso" role="status" aria-label="Entorno de pruebas"
+    style="border:2px solid #B45309;background:#FFF1D6;color:#713F12;padding:10px 12px;border-radius:10px;margin:0 0 14px;font:700 14px/1.5 system-ui,sans-serif;text-align:center;">
+    🧪 PILOTO DE PRUEBAS · Datos ficticios · No usar con operaciones reales
+  </aside>
   <div class="top">
     <span class="brand">OpsFlow</span>
     <span class="top-d"><button class="icon lang" id="modoBtn" type="button" hidden></button><button class="icon lang" id="langBtn" type="button" data-l="src-x"></button><button class="icon" id="helpBtn" aria-label="Help">?</button></span>
@@ -465,6 +469,14 @@ a.btn.go{min-width:64px}
 </dialog>
 
 <script>
+// PILOTO: aislamiento explícito de configuración y datos del navegador.
+const PILOT_PROJECT_REF = 'yxgilbgwuxmlbdrbfisi';
+const PILOT_MODE = true;
+const pilotStorage = {
+  getItem(key) { return window.localStorage.getItem('opsflow-piloto-' + PILOT_PROJECT_REF + ':' + key); },
+  setItem(key, value) { return window.localStorage.setItem('opsflow-piloto-' + PILOT_PROJECT_REF + ':' + key, value); },
+  removeItem(key) { return window.localStorage.removeItem('opsflow-piloto-' + PILOT_PROJECT_REF + ':' + key); }
+};
 const I18N_DIC = `
 // español | inglés  — # = número; {1} = hueco (se traduce también)
 # (opcional) | # (optional)
@@ -1295,7 +1307,7 @@ Esta tarea la asignó el líder: usa "No pude entregar" o pide al líder que la 
 Departamento no válido. | Invalid department.
 `;
 // ── Idioma: inglés por defecto; botón EN/ES arriba. Traduce lo que se pinta (texto, placeholder, aria-label, title) ──
-const LANG = (() => { try { return localStorage.getItem('opsflow-lang') || 'en'; } catch (_) { return 'en'; } })();
+const LANG = (() => { try { return pilotStorage.getItem('opsflow-lang') || 'en'; } catch (_) { return 'en'; } })();
 document.documentElement.dataset.lang = LANG;
 // Idioma efectivo para las partes que ya tenían versión en y es (checklist, avisos…). 'src' = sin traducir (pruebas).
 const idioma = () => LANG === 'src' ? ((typeof perfil !== 'undefined' && perfil && perfil.idioma) || 'en') : LANG;
@@ -1386,8 +1398,8 @@ const I18N = (() => {
 })();
 
 // ── Configuracion (publica por diseno: la seguridad la dan las reglas RLS) ──
-const SUPABASE_URL = 'https://zxsiantglodsqqvigndk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_f8nqvfRG75TZLMClqT2uZw_mch9Qcid';
+const SUPABASE_URL = 'https://' + PILOT_PROJECT_REF + '.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_pYfTzlWXo0Kf8yHQTh8ZyQ_J01kcL8X'; // Clave pública: nunca service_role.
 
 const T = {
   en: { hello:'Hello', dept:'Department', level:'Level', zone:'Zone', all:'All',
@@ -2419,8 +2431,8 @@ function tarjetaLimpieza(l, i, hoy){
 async function pintarMiDia(){
   const hoy = hoyMas(0), manana = hoyMas(1);
   const [r, r2] = await Promise.all([db.rpc('mi_dia', { p_fecha: hoy }), db.rpc('mi_dia', { p_fecha: manana })]);
-  if (r.offline) { try { r.data = JSON.parse(localStorage.getItem('opsflow-midia')) || null; } catch (_) {} if (r.data) { r.error = null; toast('No signal: showing the last saved list'); } }
-  else if (r.data) { try { localStorage.setItem('opsflow-midia', JSON.stringify(r.data)); } catch (_) {} }
+  if (r.offline) { try { r.data = JSON.parse(pilotStorage.getItem('opsflow-midia')) || null; } catch (_) {} if (r.data) { r.error = null; toast('No signal: showing the last saved list'); } }
+  else if (r.data) { try { pilotStorage.setItem('opsflow-midia', JSON.stringify(r.data)); } catch (_) {} }
   const lista = r.data || [], listaM = r2.data || [];
   if (abierta) {
     const l = lista.find(x => x.id === abierta && x.estado === 'en_curso');
@@ -2538,7 +2550,7 @@ const lugarHTML = t => `<p style="margin:6px 0 0"><span class="cod">${esc(t.codi
 const prioHTML = t => t.entrada ? `<span class="pill rojo">PRIORITY · Guest arrives ${esc(t.entrada)}</span>` : '';
 let secDriver = null, rutaRes = null, rutaFirma = '', rutaCargando = false;
 const NAV_KEY = 'opsflow-nav';
-const navApp = () => { try { return localStorage.getItem(NAV_KEY) === 'waze' ? 'waze' : 'google'; } catch (_) { return 'google'; } };
+const navApp = () => { try { return pilotStorage.getItem(NAV_KEY) === 'waze' ? 'waze' : 'google'; } catch (_) { return 'google'; } };
 const goHref = (lat, lng) => navApp() === 'waze'
   ? `https://waze.com/ul?ll=${encodeURIComponent(lat + ',' + lng)}&navigate=yes`
   : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat + ',' + lng)}&travelmode=driving`;
@@ -2665,7 +2677,7 @@ async function pintarRuta(){
 
   if (secDriver === null) {
     $('out').onclick = async () => { await db.salir(); };
-    $('dNav').onclick = () => { try { localStorage.setItem(NAV_KEY, navApp() === 'waze' ? 'google' : 'waze'); } catch (_) {} pintarRuta(); };
+    $('dNav').onclick = () => { try { pilotStorage.setItem(NAV_KEY, navApp() === 'waze' ? 'google' : 'waze'); } catch (_) {} pintarRuta(); };
     $('dTraf').onclick = () => irA('trafico');
     document.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => irA(b.dataset.sec));
     pintarAvisos();
@@ -2884,8 +2896,8 @@ function gpsHTML(l){
 // Sin cobertura: los pasos, las personas y las fotos se guardan en el telefono y se envian solos al volver la señal
 const sinRed = m => /fetch|network|load failed|offline|timed? ?out|connection/i.test(String(m || ''));
 const COLA = 'opsflow-cola';
-const leerCola = () => { try { return JSON.parse(localStorage.getItem(COLA) || '[]'); } catch (_) { return []; } };
-const guardarCola = c => { try { localStorage.setItem(COLA, JSON.stringify(c)); } catch (_) {} };
+const leerCola = () => { try { return JSON.parse(pilotStorage.getItem(COLA) || '[]'); } catch (_) { return []; } };
+const guardarCola = c => { try { pilotStorage.setItem(COLA, JSON.stringify(c)); } catch (_) {} };
 const idb = (() => {
   let dbp;
   const abrir = () => dbp = dbp || new Promise((ok, ko) => {
@@ -2924,7 +2936,7 @@ async function vaciarCola(){
       }
       if (r.error) toast(`Not saved: ${r.error}`);   // otras acciones mantienen flujo anterior
       guardarCola(leerCola().filter(x => x.k !== e.k));
-      if (!r.error && e.fn === 'recibir_bolsa') { try { localStorage.removeItem('opsflow-recepcion-' + e.args.p_bolsa); } catch (_) {} }
+      if (!r.error && e.fn === 'recibir_bolsa') { try { pilotStorage.removeItem('opsflow-recepcion-' + e.args.p_bolsa); } catch (_) {} }
     }
   } finally { vaciando = false; avisoCola(); }
 }
@@ -3159,8 +3171,8 @@ async function pintarLinensCheck(l){
     return;
   }
   const reciboClave = 'opsflow-recepcion-' + bolsa.id;
-  let id = localStorage.getItem(reciboClave);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(reciboClave, id); }
+  let id = pilotStorage.getItem(reciboClave);
+  if (!id) { id = crypto.randomUUID(); pilotStorage.setItem(reciboClave, id); }
   const reciboEnCola = leerCola().some(x => x.fn === 'recibir_bolsa' && x.args?.p_bolsa === bolsa.id);
   if (reciboEnCola) {
     app.innerHTML = `<section class="card"><button class="link" id="lcVolver">← Back</button>
@@ -3208,7 +3220,7 @@ async function pintarLinensCheck(l){
       $('lcMsg').innerHTML = `<div class="msg err">${esc(r.error)}</div>`;
       $('lcEnviar').disabled = false; $('lcNada').disabled = false; return;
     }
-    localStorage.removeItem(reciboClave);
+    pilotStorage.removeItem(reciboClave);
     toast(r.data?.ya_registrada ? 'Receipt already recorded' : 'Bag receipt recorded', 'ok');
     window.scrollTo(0, 0); pintarChecklist(l);
   };
@@ -3403,7 +3415,7 @@ async function pintarChecklist(l, datos){
   let r = datos ? { data: datos } : await db.rpc('mi_checklist', { p_id: l.id });
   const CK = 'opsflow-ck-' + l.id;
   if (r.offline) {   // sin señal: la ultima copia guardada + lo que esta en cola
-    let copia = null; try { copia = JSON.parse(localStorage.getItem(CK)); } catch (_) {}
+    let copia = null; try { copia = JSON.parse(pilotStorage.getItem(CK)); } catch (_) {}
     if (copia) {
       leerCola().filter(e => e.fn === 'marcar_paso' && e.args.p_id === l.id).forEach(e => { const p = copia.pasos.find(x => x.id === e.args.p_paso); if (p) p.hecho = e.args.p_hecho; });
       leerCola().filter(e => e.tipo === 'foto' && e.id === l.id).forEach(e => { copia.fotos[e.sala] = `${l.id}/${e.sala}.jpg`; });
@@ -3414,7 +3426,7 @@ async function pintarChecklist(l, datos){
   if (!('linens_revisado' in r.data)) {   // la base de datos tiene una version vieja: avisar en vez de dar vueltas
     abierta = null; toast(bi('The server is out of date. Tell Operations.', 'Servidor desactualizado: avisa a Operación.')); return pintarMiDia();
   }
-  try { localStorage.setItem(CK, JSON.stringify(r.data)); } catch (_) {}
+  try { pilotStorage.setItem(CK, JSON.stringify(r.data)); } catch (_) {}
   ckFoto = JSON.stringify(r.data);
   const ck = r.data, es = idioma() === 'es';
   // Equipo: si aún no he llegado, primero "I'm here"
@@ -3788,7 +3800,7 @@ function avisar(nombre, args, data){
              : { tipo, id: ['reportar_pendiente', 'reportar_linens', 'avisar_listo'].includes(nombre) ? data : args.p_id };
   sb.functions.invoke('avisar', { body }).catch(() => {});
 }
-const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const pushOK = () => !PILOT_MODE && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const esIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
 const instalada = () => navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 async function miSuscripcion(){
@@ -3893,7 +3905,7 @@ async function arrancar(){
   }
   document.documentElement.lang = idioma();
   if (perfil.debe_cambiar_clave) return pintarCambioClave();
-  refrescarSuscripcion();
+  // Notificaciones reales desactivadas en el piloto.
   const v = new URLSearchParams(location.search).get('v');
   if (v && tabsDe().some(([k]) => k === v)) vista = v;
   pintarInicio();
@@ -3903,18 +3915,24 @@ async function arrancar(){
 { const b = document.getElementById('langBtn'), otro = idioma() === 'es' ? 'en' : 'es';
   b.textContent = otro.toUpperCase();
   b.setAttribute('aria-label', otro === 'es' ? 'Cambiar a español' : 'Switch to English');
-  b.onclick = () => { try { localStorage.setItem('opsflow-lang', otro); } catch (_) {} location.reload(); }; }
+  b.onclick = () => { try { pilotStorage.setItem('opsflow-lang', otro); } catch (_) {} location.reload(); }; }
 I18N.arrancar(LANG);
 document.getElementById('helpBtn').onclick = () => document.getElementById('help').showModal();
 document.getElementById('helpClose').onclick = () => document.getElementById('help').close();
 
-if (!window.supabase) {
+if (SUPABASE_URL !== 'https://' + PILOT_PROJECT_REF + '.supabase.co'
+  || !SUPABASE_KEY.startsWith('sb_publishable_')
+  || PILOT_PROJECT_REF !== 'yxgilbgwuxmlbdrbfisi') {
+  app.innerHTML = '<div class="card"><h1>PILOTO BLOQUEADO</h1><p class="msg err">Configuración Supabase incorrecta. No se abrirá OpsFlow.</p></div>';
+} else if (!window.supabase) {
   app.innerHTML = '<div class="card"><h1>' + bi('No connection', 'Sin conexión') + '</h1><p class="sub">' + bi('Connect to the internet and open OpsFlow again.', 'Conéctate a internet y vuelve a abrir OpsFlow.') + '</p></div>';
 } else {
   // ?cuenta=2, ?cuenta=3… → cada pestaña guarda su propia sesion (varias cuentas a la vez en el mismo PC)
   const CUENTA = (new URLSearchParams(location.search).get('cuenta') || '').replace(/[^a-z0-9]/gi, '').slice(0, 10);
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession:true, autoRefreshToken:true,
-    ...(CUENTA ? { storageKey: 'opsflow-cuenta-' + CUENTA } : {}) } });
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: {
+    persistSession:true, autoRefreshToken:true, storage:window.sessionStorage,
+    storageKey:'opsflow-piloto-' + PILOT_PROJECT_REF + (CUENTA ? '-cuenta-' + CUENTA : '')
+  } });
   if (CUENTA) { document.querySelector('.brand').innerHTML = `OpsFlow <span class="pill test" data-sin-traducir>${esc(CUENTA)}</span>`; document.title = CUENTA + ' · OpsFlow'; }
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { perfil = null; pintarLogin(); } });
   arrancar();
