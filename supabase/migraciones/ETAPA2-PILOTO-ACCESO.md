@@ -1,10 +1,10 @@
 # OpsFlow · Piloto aislado de la Etapa 2 (22-10-2026)
 
-**Estado:** Configurado en la rama `piloto-norte-3dep` y publicado por HTTPS en Supabase de pruebas.
+**Estado:** Configurado en la rama `piloto-norte-3dep` y publicado como sitio web independiente en Vercel.
 
-**URL del piloto:** https://yxgilbgwuxmlbdrbfisi.supabase.co/functions/v1/opsflow-piloto
+**URL del piloto (Vercel):** https://opsflow-piloto-pruebas.vercel.app
 
-Prueba HTTP externa confirmada: **200 OK**, identificación visible y referencia de producción ausente: https://github.com/ivanyesith-spec/opsflow/actions/runs/39779066031.
+**Despliegue Vercel confirmado READY:** `dpl_4hpiDsihpRDDXm6RBiU72HNxxVLn`, fuente `piloto-norte-3dep`, commit `f197cf82c03d23722a0b4534748376965e1f7047`. La antigua URL Supabase devolvía el HTML como texto plano; se desactivó y no debe utilizarse.
 
 La URL es pública para mostrar la pantalla de acceso; **ninguna operación se puede realizar sin una cuenta autenticada con permisos**. No se deben publicar contraseñas ni secretos en GitHub.
 
@@ -17,7 +17,7 @@ La URL es pública para mostrar la pantalla de acceso; **ninguna operación se p
 - Desactiva el registro del Service Worker y los avisos push para evitar interferencias con la aplicación principal.
 - La rama `main` y la base de datos `opsflow` **no se modifican**.
 
-**Importante:** el alojamiento es una Supabase Edge Function pública solo para la interfaz. El contenido está fijado al commit `8251ba2a3f93488135c25e9a0a651549067d84a8`, que ya contiene la versión de pruebas. Se mantienen desactivados los avisos push y la PWA; cámara y QR aún requieren prueba en móvil.
+**Importante:** el alojamiento es un proyecto Vercel separado de `opsflow` y conectado exclusivamente al proyecto Supabase de pruebas. Vercel tiene habilitada la protección de acceso; el usuario puede necesitar iniciar sesión en Vercel antes de ver el piloto. Siguen desactivados los avisos push y la PWA; cámara y QR requieren prueba en móvil.
 
 ## Estado verificado
 - Migración 36 instalada en Supabase de pruebas.
@@ -45,9 +45,10 @@ La URL es pública para mostrar la pantalla de acceso; **ninguna operación se p
 8. No permitir que una incidencia o bolsa ausente bloquee indebidamente el flujo de Cleaning.
 
 ## Recomendación de publicación
-Se está utilizando una Edge Function pública del proyecto Supabase de PRUEBAS con HTTPS.
-Comprobar la URL y la etiqueta del piloto antes del inicio de sesión. No modificar
-GitHub Pages ni fusionar a `main`.
+El frontend se aloja en `opsflow-piloto-pruebas.vercel.app` (Vercel). La base de datos
+está en `yxgilbgwuxmlbdrbfisi` (Supabase PRUEBAS). El proyecto `opsflow` de Vercel
+se mantiene separado y no se ha cambiado su despliegue desde `main`. Comprobar la
+etiqueta PILOTO antes de iniciar sesión y no fusionar a `main`.
 
 ## Evidencias
 - Pruebas navegador: https://github.com/ivanyesith-spec/opsflow/actions/runs/39771596228
