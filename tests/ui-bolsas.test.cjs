@@ -121,7 +121,7 @@ async function newPage(browser, base, scenario){
     bag:window.__opsflowMock.bag, rpcCalls:window.__opsflowMock.rpcCalls,
     receiptCalls:window.__opsflowMock.receiptCalls,
     received:window.__opsflowMock.received,
-    cola:JSON.parse(localStorage.getItem('opsflow-cola')||'[]')
+    cola:JSON.parse(localStorage.getItem('opsflow-piloto-yxgilbgwuxmlbdrbfisi:opsflow-cola')||'[]')
   })),runtimeErrors,outside};
 }
 async function run(){
@@ -199,7 +199,7 @@ async function run(){
       assert.equal(st.cola[0].args.p_faltantes.toalla_grande,1);
       const uuid=st.cola[0].args.p_idempotencia;
       await p.evaluate(()=>window.dispatchEvent(new Event('online')));
-      await p.waitForFunction(()=>JSON.parse(localStorage.getItem('opsflow-cola')||'[]').length===0);
+      await p.waitForFunction(()=>JSON.parse(localStorage.getItem('opsflow-piloto-yxgilbgwuxmlbdrbfisi:opsflow-cola')||'[]').length===0);
       const after=await t.store();
       assert.equal(after.receiptCalls.length,2);
       assert.equal(after.receiptCalls[1].p_idempotencia,uuid);
