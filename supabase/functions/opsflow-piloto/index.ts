@@ -18,8 +18,10 @@ Deno.serve(async (request: Request) => {
   if (envUrl !== "https://" + PROJECT_REF + ".supabase.co")
     return response("Preview disabled: wrong Supabase environment.",503);
   const parsed = new URL(request.url);
-  const marker = "/functions/v1/" + SLUG;
-  if (!parsed.pathname.startsWith(marker)) return response("Not found.",404);
+  // Supabase Edge Runtime puede entregar la ruta completa o solo /<slug>.
+  const candidates = ["/functions/v1/" + SLUG, "/" + SLUG];
+  const marker = candidates.find(x => parsed.pathname === x || parsed.pathname.startsWith(x + "/"));
+  if (!marker) return response("Not found.",404);
   const suffix = parsed.pathname.slice(marker.length).replace(/^\/+/, "");
   const file = suffix || "index.html";
   if (!Object.hasOwn(TYPES,file)) return response("Not found.",404);
