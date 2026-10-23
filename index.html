@@ -2164,10 +2164,15 @@ async function pintarAsignar(){
 
 // ── Linens (lider de linens y Operacion) ──
 async function pintarLinens(){
-  const [pends, rb] = await Promise.all([db.pendientesDia(fechaCampo, 'linens'), db.rpc('bolsas_dia', { p_fecha: fechaCampo })]);
+  const operador = perfil.nivel === 'operador' && perfil.departamento === 'Linens';
+  const [pends, rb] = await Promise.all([
+    operador ? Promise.resolve([]) : db.pendientesDia(fechaCampo, 'linens'),
+    db.rpc(operador ? 'bolsas_linens_mias' : 'bolsas_dia', { p_fecha: fechaCampo })
+  ]);
   const abiertos = pends.filter(p => p.estado === 'abierto');
   const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
+    ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Escanea la etiqueta QR de una bolsa para asignarla a tu cuenta. Solo verás tus propias bolsas.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
       <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
       ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
@@ -2179,6 +2184,15 @@ async function pintarLinens(){
     </section>
     ${rb.error ? `<section class="card"><div class="msg err">${esc(rb.error)}</div></section>` : bolsasHTML(rb.data || [], true)}`;
   bindNav(); bindBolsas();
+  if (operador) $('linensScan').onclick = () => abrirEscaner({nombre:'linens bag'}, {
+    titulo:'Escanea la bolsa que vas a preparar', sinGps:true,
+    alLeer: async texto => {
+      const r = await db.rpc('escanear_bolsa_linens',{p_qr:texto});
+      if (!r.error) { toast('Bolsa asignada a tu cuenta','ok'); pintarLinens(); }
+      return r;
+    },
+    alSin: () => toast('Pide una etiqueta QR válida al líder.')
+  });
   $('lFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarLinens(); } };
   if (supervisor) document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
 }
