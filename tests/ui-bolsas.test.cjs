@@ -213,6 +213,16 @@ async function run(){
       assert.equal(await p.locator('[data-entbolsa]').count(),1);
     });
     console.log('UI aislada: '+completed+' pruebas Chromium OK; sin llamadas a Supabase.');
+    // Comprobar la PUBLICACIÓN REAL: READY en Vercel no basta para probar que HTML abre.
+    const pilotUrl='https://opsflow-piloto-pruebas-fkze9erd2-ivanyesith-9763.vercel.app/';
+    const hosted=await fetch(pilotUrl,{signal:AbortSignal.timeout(25000)});
+    const ct=hosted.headers.get('content-type')||'';
+    const text=await hosted.text();
+    console.log('LIVE_PREVIEW_DIAG '+JSON.stringify({status:hosted.status,contentType:ct,finalUrl:hosted.url,htmlPresent:text.includes('<!doctype html>'),bannerPresent:text.includes('PILOTO DE PRUEBAS'),snippet:text.slice(0,130)}));
+    assert.equal(hosted.status,200,'Preview no devuelve HTTP 200');
+    assert.ok(ct.includes('text/html'),'Preview no devuelve HTML');
+    assert.ok(text.includes("const PILOT_PROJECT_REF = 'yxgilbgwuxmlbdrbfisi'"),'Preview incorrecto');
+    console.log('OK: piloto publicado en Vercel con HTML de pruebas');
   }finally{await browser.close();await new Promise(resolve=>testServer.close(resolve));}
 }
 run().catch(e=>{console.error(e.stack||e);process.exitCode=1;});
