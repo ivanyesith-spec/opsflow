@@ -1705,7 +1705,7 @@ function tabsDe(){
   const t = perfil.nivel === 'operador' && perfil.departamento === 'Linens' ? [['linens', 'Linens']] : [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
   const op = perfil.nivel === 'operacion', lider = perfil.nivel === 'lider', dep = perfil.departamento;
   if (op || (lider && dep === 'Limpieza')) t.push(['asignar', 'Asignar'], ['seguimiento', 'Seguimiento']);
-  if (op || dep === 'Linens') t.push(['linens', 'Linens']);
+  if (op || (dep === 'Linens' && perfil.nivel !== 'operador')) t.push(['linens', 'Linens']);
   if (op || (lider && dep === 'Bodega')) t.push(['bodega', 'Bodega']);
   if (op || (lider && dep === 'Drivers')) t.push(['drivers', 'Drivers']);
   if (op || (lider && dep === 'Limpieza')) t.push(['tiempos', 'Tiempos']);
@@ -1730,7 +1730,7 @@ function pintarInicio(){
     if (perfil.departamento === 'Drivers') return pintarRuta();
     return pintarCuenta();
   }
-  if (perfil.departamento === 'Linens' && perfil.nivel === 'operador' && vista === 'inicio') vista = 'linens';
+  if (perfil.departamento === 'Linens' && perfil.nivel === 'operador') vista = 'linens';
   if (!tabsDe().some(([k]) => k === vista)) vista = 'inicio';
   document.querySelector('.wrap').classList.toggle('wide', vista !== 'inicio');
   if (vista === 'checkouts') return pintarCheckouts();
@@ -3717,7 +3717,12 @@ if (!window.supabase) {
     ...(CUENTA ? { storageKey: 'opsflow-cuenta-' + CUENTA } : {}) } });
   if (CUENTA) { document.querySelector('.brand').innerHTML = `OpsFlow <span class="pill test" data-sin-traducir>${esc(CUENTA)}</span>`; document.title = CUENTA + ' · OpsFlow'; }
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') { perfil = null; pintarLogin(); } });
-  arrancar();
+  arrancar().catch(error => {
+    console.error('OpsFlow startup failed:', error);
+    app.innerHTML = '<section class="card"><h2>No se pudo cargar OpsFlow</h2><p>Hubo un problema al cargar tu perfil. Actualiza la página. Si continúa, comunica el error a Operación.</p><p class="msg err">' + esc(error?.message || 'Error inesperado') + '</p><button class="btn" id="retryStart">Reintentar</button></section>';
+    const retry = document.getElementById('retryStart');
+    if (retry) retry.onclick = () => location.reload();
+  });
 }
 </script>
 </body>
