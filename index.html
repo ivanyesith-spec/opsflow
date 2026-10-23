@@ -1702,7 +1702,7 @@ function mostrarClave(d, clave, titulo){
 // ── Navegacion (lideres y Operacion) ──
 let vista = 'inicio';
 function tabsDe(){
-  const t = [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
+  const t = perfil.nivel === 'operador' && perfil.departamento === 'Linens' ? [['linens', 'Linens']] : [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
   const op = perfil.nivel === 'operacion', lider = perfil.nivel === 'lider', dep = perfil.departamento;
   if (op || (lider && dep === 'Limpieza')) t.push(['asignar', 'Asignar'], ['seguimiento', 'Seguimiento']);
   if (op || dep === 'Linens') t.push(['linens', 'Linens']);
@@ -2166,6 +2166,7 @@ async function pintarAsignar(){
 async function pintarLinens(){
   const [pends, rb] = await Promise.all([db.pendientesDia(fechaCampo, 'linens'), db.rpc('bolsas_dia', { p_fecha: fechaCampo })]);
   const abiertos = pends.filter(p => p.estado === 'abierto');
+  const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
     <section class="card">
       <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
@@ -2173,13 +2174,13 @@ async function pintarLinens(){
           <div class="barra"><span>${p.prioritario ? '<span class="pill rojo">Check-in hoy</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> <b>${esc(p.propiedades?.nombre)}</b> <span class="tag">· ${esc(p.propiedades?.pueblo)}</span></span>
             ${pill(p.estado, ESTADO_ES[p.estado])}</div>
           <p style="margin:6px 0 0"><b>${esc(p.items ? itemsTxt(p.items, 'es') : p.cantidad + ' × ' + p.detalle)}</b></p>
-          ${p.estado === 'abierto' ? `<button class="btn" data-prep="${esc(p.id)}">Preparado</button>` : ''}
+          ${supervisor && p.estado === 'abierto' ? `<button class="btn" data-prep="${esc(p.id)}">Preparado</button>` : ''}
         </div>`).join('') : '<p class="empty">No hay pendientes de linens este día.</p>'}
     </section>
     ${rb.error ? `<section class="card"><div class="msg err">${esc(rb.error)}</div></section>` : bolsasHTML(rb.data || [], true)}`;
   bindNav(); bindBolsas();
   $('lFecha').onchange = e => { if (e.target.value) { fechaCampo = e.target.value; pintarLinens(); } };
-  document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
+  if (supervisor) document.querySelectorAll('[data-prep]').forEach(b => b.onclick = () => { b.disabled = true; accion('marcar_preparado', { p_id: b.dataset.prep }, 'Preparado: pasa al driver'); });
 }
 
 // ── Bodega (lider de bodega y Operacion): utiles que faltan en los aptos ──
