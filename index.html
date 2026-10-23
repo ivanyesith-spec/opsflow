@@ -2648,7 +2648,7 @@ function bolsasHTML(bs, linens){
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
           ${linens && ['por_preparar','preparada'].includes(b.estado) ? `<button class="btn sm" data-bedit="${esc(b.id)}">${b.estado === 'preparada' ? 'Editar contenido' : 'Preparar con contenido'}</button>` : ''}
-          ${linens && b.estado === 'preparada' ? `<button class="btn sm ghost" data-bdes="${esc(b.id)}">Deshacer</button>` : ''}
+          
           ${b.foto ? `<button class="btn sm ghost" data-bfoto="${esc(b.foto)}">Foto</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">No hay limpiezas este día.</p>'}
     </section>`;
 }
@@ -2685,7 +2685,7 @@ function bindBolsas(repintar){
     };
     dlg.showModal();
   });
-  document.querySelectorAll('[data-bdes]').forEach(b => b.onclick = () => { b.disabled = true; accion('preparar_bolsa', { p_bolsa: b.dataset.bdes, p_lista: false }, 'Vuelve a por preparar'); });
+  // No se permite deshacer desde el panel: solo correcciones auditadas de contenido.
   document.querySelectorAll('[data-bfoto]').forEach(b => b.onclick = () => verFoto(b.dataset.bfoto, 'Entrega de la bolsa'));
   if ($('bEtiq')) $('bEtiq').onclick = () => imprimirEtiquetas(fechaCampo);
 }
