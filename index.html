@@ -1438,7 +1438,7 @@ const db = {
     // OPS-ADM-001: un sustituto vigente SUMA las facultades del líder de su departamento hasta la fecha fijada
     // por Operación y conserva su trabajo de operador. Su nivel no cambia: la app alterna entre las dos vistas.
     if (data && data.activo && data.nivel === 'operador') {
-      const s = await sb.rpc('mi_sustitucion').catch(() => ({}));
+      const s = await sb.rpc('mi_sustitucion').then(r => r, () => ({})); // rpc() no tiene .catch: usar then(ok, error)
       if (s && s.data && s.data.departamento === data.departamento) data.sustituto = s.data;
     }
     return data;
@@ -1724,7 +1724,7 @@ function abrirPersona(p){
 }
 
 // ── Crear cuenta (solo Operacion) ──
-const APP_URL = 'https://ivanyesith-spec.github.io/opsflow/';
+const APP_URL = 'https://opsflow-piloto-pruebas.vercel.app/'; // piloto: el mensaje de alta debe llevar al piloto, no a produccion
 const $ = id => document.getElementById(id);
 function abrirNueva(){
   $('fNueva').reset(); $('nMsg').innerHTML = ''; $('nGo').disabled = false; $('nGo').textContent = 'Crear cuenta';
