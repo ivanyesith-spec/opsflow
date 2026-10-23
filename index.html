@@ -1705,7 +1705,7 @@ function tabsDe(){
   const t = [['inicio', 'Inicio'], ['checkouts', 'Checkouts']];
   const op = perfil.nivel === 'operacion', lider = perfil.nivel === 'lider', dep = perfil.departamento;
   if (op || (lider && dep === 'Limpieza')) t.push(['asignar', 'Asignar'], ['seguimiento', 'Seguimiento']);
-  if (op || (lider && dep === 'Linens')) t.push(['linens', 'Linens']);
+  if (op || dep === 'Linens') t.push(['linens', 'Linens']);
   if (op || (lider && dep === 'Bodega')) t.push(['bodega', 'Bodega']);
   if (op || (lider && dep === 'Drivers')) t.push(['drivers', 'Drivers']);
   if (op || (lider && dep === 'Limpieza')) t.push(['tiempos', 'Tiempos']);
@@ -1714,7 +1714,7 @@ function tabsDe(){
 }
 const puedeCargar = () => perfil.nivel === 'operacion' || (perfil.nivel === 'lider' && perfil.departamento === 'Limpieza');
 function navHTML(){
-  if (perfil.nivel === 'operador') return '';
+  if (perfil.nivel === 'operador' && perfil.departamento !== 'Linens') return '';
   const tabs = tabsDe();
   return `<nav class="tabs" aria-label="Secciones">${tabs.map(([k, l]) =>
     `<button data-vista="${k}" ${vista === k ? 'aria-current="page"' : ''}>${l}</button>`).join('')}</nav>`;
@@ -1723,13 +1723,14 @@ function bindNav(){
   document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => { vista = b.dataset.vista; pintarInicio(); });
 }
 function pintarInicio(){
-  if (perfil.nivel === 'operador') {
+  if (perfil.nivel === 'operador' && perfil.departamento !== 'Linens') {
     vista = 'inicio';
     document.querySelector('.wrap').classList.remove('wide');
     if (perfil.departamento === 'Limpieza') return pintarMiDia();
     if (perfil.departamento === 'Drivers') return pintarRuta();
     return pintarCuenta();
   }
+  if (perfil.departamento === 'Linens' && perfil.nivel === 'operador' && vista === 'inicio') vista = 'linens';
   if (!tabsDe().some(([k]) => k === vista)) vista = 'inicio';
   document.querySelector('.wrap').classList.toggle('wide', vista !== 'inicio');
   if (vista === 'checkouts') return pintarCheckouts();
@@ -2641,6 +2642,7 @@ function bolsasHTML(bs, linens){
       <div class="barra"><h2>Bolsas de linens (${bs.length})</h2>${linens ? '<button class="btn sm ghost" id="bEtiq">Imprimir etiquetas QR</button>' : ''}</div>
       <div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span></div>
       ${bs.length ? `<ul class="pends">${bs.map(b => `<li><span>${b.entrada ? `<span class="pill rojo">Check-in ${esc(b.entrada)}</span> ` : ''}<span class="cod">${esc(b.codigo)}</span> ${esc(b.nombre)} <span class="tag">· ${esc(b.zona)}</span>
+          ${b.preparador ? `<br><span class="tag">Preparado por: ${esc(b.preparador)} · ${b.preparada_en ? esc(new Date(b.preparada_en).toLocaleString('es-ES')) : 'sin hora'}</span>` : ''}
           ${b.driver ? `<br><span class="tag">${esc(b.driver)}${b.entregada_en ? ' · entregada ' + esc(new Date(b.entregada_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) : ''}${b.comentario ? ' · «' + esc(b.comentario) + '»' : ''}</span>` : ''}
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
