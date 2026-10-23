@@ -2644,13 +2644,44 @@ function bolsasHTML(bs, linens){
           ${b.driver ? `<br><span class="tag">${esc(b.driver)}${b.entregada_en ? ' · entregada ' + esc(new Date(b.entregada_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) : ''}${b.comentario ? ' · «' + esc(b.comentario) + '»' : ''}</span>` : ''}
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
-          ${linens && b.estado === 'por_preparar' ? `<button class="btn sm" data-bprep="${esc(b.id)}">Preparada</button>` : ''}
+          ${linens && ['por_preparar','preparada'].includes(b.estado) ? `<button class="btn sm" data-bedit="${esc(b.id)}">${b.estado === 'preparada' ? 'Editar contenido' : 'Preparar con contenido'}</button>` : ''}
           ${linens && b.estado === 'preparada' ? `<button class="btn sm ghost" data-bdes="${esc(b.id)}">Deshacer</button>` : ''}
           ${b.foto ? `<button class="btn sm ghost" data-bfoto="${esc(b.foto)}">Foto</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">No hay limpiezas este día.</p>'}
     </section>`;
 }
 function bindBolsas(repintar){
-  document.querySelectorAll('[data-bprep]').forEach(b => b.onclick = () => { b.disabled = true; accion('preparar_bolsa', { p_bolsa: b.dataset.bprep, p_lista: true }, 'Bolsa preparada'); });
+  document.querySelectorAll('[data-bedit]').forEach(btn => btn.onclick = async () => {
+    const r = await db.rpc('bolsas_dia', { p_fecha: fechaCampo });
+    if (r.error) return toast(r.error);
+    const bolsa = (r.data || []).find(x => String(x.id) === btn.dataset.bedit);
+    if (!bolsa || !['por_preparar', 'preparada'].includes(bolsa.estado)) return toast('La bolsa ya no se puede editar.');
+    const cant = {};
+    for (const [k] of LINENS) cant[k] = Number(bolsa.contenido?.[k] || 0);
+    const dlg = document.createElement('dialog');
+    dlg.innerHTML = '<form method="dialog"><h2>Contenido de la bolsa</h2><p class="tag">Confirma las cantidades antes de marcar como preparada.</p><div data-items></div><div data-error role="alert"></div><div class="btns"><button class="btn" type="button" data-save>Guardar y preparar</button><button class="btn ghost" value="cancel">Cancelar</button></div></form>';
+    document.body.appendChild(dlg);
+    dlg.addEventListener('close', () => dlg.remove());
+    pintarItems(dlg.querySelector('[data-items]'), cant, () => {});
+    dlg.querySelector('[data-save]').onclick = async e => {
+      const contenido = Object.fromEntries(Object.entries(cant).filter(([,v]) => v > 0));
+      if (!Object.keys(contenido).length) {
+        dlg.querySelector('[data-error]').textContent = 'Añade al menos un artículo.';
+        return;
+      }
+      const save = e.currentTarget;
+      save.disabled = true;
+      const result = await db.rpc('guardar_contenido_bolsa', {p_bolsa:bolsa.id,p_contenido:contenido,p_lista:true});
+      if (result.error) {
+        dlg.querySelector('[data-error]').textContent = result.error;
+        save.disabled = false;
+        return;
+      }
+      dlg.close();
+      toast('Contenido guardado. Bolsa preparada.', 'ok');
+      pintarInicio();
+    };
+    dlg.showModal();
+  });
   document.querySelectorAll('[data-bdes]').forEach(b => b.onclick = () => { b.disabled = true; accion('preparar_bolsa', { p_bolsa: b.dataset.bdes, p_lista: false }, 'Vuelve a por preparar'); });
   document.querySelectorAll('[data-bfoto]').forEach(b => b.onclick = () => verFoto(b.dataset.bfoto, 'Entrega de la bolsa'));
   if ($('bEtiq')) $('bEtiq').onclick = () => imprimirEtiquetas(fechaCampo);
