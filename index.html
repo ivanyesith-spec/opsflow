@@ -2172,7 +2172,7 @@ async function pintarLinens(){
   const abiertos = pends.filter(p => p.estado === 'abierto');
   const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
-    ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Escanea la etiqueta QR de una bolsa para asignarla a tu cuenta. Solo verás tus propias bolsas.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
+    ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
       <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
       ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
@@ -2658,6 +2658,7 @@ function bolsasHTML(bs, linens){
       <div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span></div>
       ${bs.length ? `<ul class="pends">${bs.map(b => `<li><span>${b.entrada ? `<span class="pill rojo">Check-in ${esc(b.entrada)}</span> ` : ''}<span class="cod">${esc(b.codigo)}</span> ${esc(b.nombre)} <span class="tag">· ${esc(b.zona)}</span>
           ${b.preparador ? `<br><span class="tag">Preparado por: ${esc(b.preparador)} · ${b.preparada_en ? esc(new Date(b.preparada_en).toLocaleString('es-ES')) : 'sin hora'}</span>` : ''}
+          ${linens && b.camas_dobles !== undefined ? `<br><span class="tag">Camas: ${Number(b.camas_dobles||0)} dobles · ${Number(b.camas_indiv||0)} individuales · ${Number(b.sofas_cama||0)} sofás cama · ${Number(b.banos||0)} baños</span>` : ''}
           ${b.driver ? `<br><span class="tag">${esc(b.driver)}${b.entregada_en ? ' · entregada ' + esc(new Date(b.entregada_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) : ''}${b.comentario ? ' · «' + esc(b.comentario) + '»' : ''}</span>` : ''}
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
