@@ -2163,6 +2163,31 @@ async function pintarAsignar(){
 }
 
 // ── Linens (lider de linens y Operacion) ──
+// Estándar PROVISIONAL de empaque: sólo vista previa; nunca se graba como contenido confirmado.
+// Sustituir con la lista oficial antes de habilitar la confirmación automática por QR.
+const LINENS_ESTANDAR_PRUEBA = Object.freeze({
+  sabana_doble: { doble: 1, sofa: 1 },
+  sabana_sencilla: { individual: 1 },
+  funda_duvet_doble: { doble: 1, sofa: 1 },
+  funda_duvet_sencilla: { individual: 1 },
+  funda_almohada: { doble: 2, individual: 1, sofa: 2 },
+  toalla_grande: { doble: 2, individual: 1, sofa: 2 },
+  toalla_pequena: { doble: 2, individual: 1, sofa: 2 },
+  alfombra_bano: { bano: 1 },
+  toalla_cocina: { apartamento: 1 }
+});
+function linensEsperadoPrueba(apt){
+  const factores = {doble:Number(apt.camas_dobles)||0,individual:Number(apt.camas_indiv)||0,sofa:Number(apt.sofas_cama)||0,bano:Number(apt.banos)||0,apartamento:1};
+  return Object.entries(LINENS_ESTANDAR_PRUEBA).map(([clave,regla])=>({
+    clave, cantidad:Object.entries(regla).reduce((total,[factor,n])=>total+factores[factor]*n,0)
+  })).filter(x=>x.cantidad>0);
+}
+function mostrarLinensPrueba(apt){
+  return linensEsperadoPrueba(apt).map(x=>{
+    const art=LINENS.find(l=>l[0]===x.clave);
+    return esc(x.cantidad+' × '+(art?art[2]:x.clave));
+  }).join(' · ');
+}
 async function pintarLinens(){
   const operador = perfil.nivel === 'operador' && perfil.departamento === 'Linens';
   const [pends, rb, plan] = await Promise.all([
@@ -2176,8 +2201,8 @@ async function pintarLinens(){
     ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
       <div class="barra"><h2>Lista de apartamentos · ${(plan.data || []).length}</h2>${operador ? fechaBarra("lFecha",fechaCampo) : ""}</div>
-      ${plan.error ? `<p class="msg err">${esc(plan.error.message || plan.error)}</p>` : (plan.data || []).map(x => `<div class="tarjeta"><b>${esc(x.codigo)}</b> ${esc(x.nombre)} <span class="tag">· ${esc(x.zona)}</span><p>${x.camas_dobles||0} camas dobles · ${x.camas_indiv||0} individuales · ${x.sofas_cama||0} sofás cama · ${x.banos||0} baños</p></div>`).join('')}
-      <p class="tag">Cantidades de linens: pendientes de configurar según el estándar aprobado.</p>
+      ${plan.error ? `<p class="msg err">${esc(plan.error.message || plan.error)}</p>` : (plan.data || []).map(x => `<div class="tarjeta"><b>${esc(x.codigo)}</b> ${esc(x.nombre)} <span class="tag">· ${esc(x.zona)}</span><p>${x.camas_dobles||0} camas dobles · ${x.camas_indiv||0} individuales · ${x.sofas_cama||0} sofás cama · ${x.banos||0} baños</p><p><b>Contenido estimado (PRUEBA):</b> ${mostrarLinensPrueba(x)}</p></div>`).join('')}
+      <p class="tag">ESTÁNDAR PROVISIONAL · No confirmado. Las cantidades son ilustrativas; no se utilizan para confirmar bolsas ni atribuir faltantes.</p>
     </section>
     ${!operador ? `<section class="card"><div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
       ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
