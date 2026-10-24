@@ -2175,7 +2175,7 @@ async function pintarLinens(){
   app.innerHTML = `${navHTML()}
     ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
-      <h2>Lista de apartamentos · ${(plan.data || []).length}</h2>
+      <div class="barra"><h2>Lista de apartamentos · ${(plan.data || []).length}</h2>${operador ? fechaBarra("lFecha",fechaCampo) : ""}</div>
       ${plan.error ? `<p class="msg err">${esc(plan.error.message || plan.error)}</p>` : (plan.data || []).map(x => `<div class="tarjeta"><b>${esc(x.codigo)}</b> ${esc(x.nombre)} <span class="tag">· ${esc(x.zona)}</span><p>${x.camas_dobles||0} camas dobles · ${x.camas_indiv||0} individuales · ${x.sofas_cama||0} sofás cama · ${x.banos||0} baños</p></div>`).join('')}
       <p class="tag">Cantidades de linens: pendientes de configurar según el estándar aprobado.</p>
     </section>
