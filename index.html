@@ -2693,7 +2693,7 @@ function bolsasHTML(bs, linens){
           ${b.driver ? `<br><span class="tag">${esc(b.driver)}${b.entregada_en ? ' · entregada ' + esc(new Date(b.entregada_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) : ''}${b.comentario ? ' · «' + esc(b.comentario) + '»' : ''}</span>` : ''}
           ${b.incidencia ? `<br><span class="pill rojo">No entregada: ${esc(b.incidencia)}</span>` : ''}</span>
         <span>${pill(BOLSA_PILL[b.estado], BOLSA_ES[b.estado])}
-          ${linens && ['por_preparar','preparada'].includes(b.estado) ? `<button class="btn sm" data-bedit="${esc(b.id)}">${b.estado === 'preparada' ? 'Editar contenido' : 'Preparar con contenido'}</button>` : ''}
+          
           
           ${b.foto ? `<button class="btn sm ghost" data-bfoto="${esc(b.foto)}">Foto</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="empty">No hay limpiezas este día.</p>'}
     </section>`;
