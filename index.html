@@ -2209,6 +2209,14 @@ function resumenLiderLinens(bolsas){
    ${personal.length?personal.map(([nombre,n])=>`<div class="tarjeta"><b>${esc(nombre)}</b> <span class="tag">· ${n} bolsas</span></div>`).join(''):'<p class="empty">Ninguna preparación registrada todavía.</p>'}
    ${bolsas.filter(b=>b.estado==='preparada').length?'<h3>Listas para recogida</h3>':''}
    ${bolsas.filter(b=>b.estado==='preparada').map(b=>`<div class="tarjeta"><b>${esc(b.codigo)}</b> · ${esc(b.preparador||'Sin preparador')} <span class="tag">${b.preparada_en?esc(new Date(b.preparada_en).toLocaleString('es-ES')):''}</span></div>`).join('')}
+   <h3>Cadena de custodia</h3>
+   ${bolsas.filter(b=>b.estado!=='por_preparar').map(b=>`<div class="tarjeta"><b>${esc(b.codigo)}</b>
+   <p><b>Preparación:</b> ${esc(b.preparador||'Sin responsable')} ${b.preparada_en?'· '+esc(new Date(b.preparada_en).toLocaleString('es-ES')):''}</p>
+   <p><b>Recogida Driver:</b> ${b.recogida_en?esc(b.driver||'Driver sin nombre')+' · '+esc(new Date(b.recogida_en).toLocaleString('es-ES')):'Pendiente'}</p>
+   <p><b>Entrega:</b> ${b.entregada_en?esc(new Date(b.entregada_en).toLocaleString('es-ES')):'Pendiente'}</p>
+   <p><b>Recepción Cleaner:</b> ${b.recibida_en?esc(b.recibida_por||'Receptor no identificado')+' · '+esc(new Date(b.recibida_en).toLocaleString('es-ES')):'Pendiente'}</p>
+   ${b.diferencia && Object.keys(b.diferencia).length?'<span class="pill rojo">Revisar diferencias</span>':''}
+   </div>`).join('') || '<p class="empty">Sin bolsas preparadas.</p>'}
    <p class="tag">Las cantidades de piezas siguen sujetas al estándar provisional de empaque.</p>
   </section>`;
 }
