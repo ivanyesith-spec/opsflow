@@ -2165,16 +2165,21 @@ async function pintarAsignar(){
 // ── Linens (lider de linens y Operacion) ──
 async function pintarLinens(){
   const operador = perfil.nivel === 'operador' && perfil.departamento === 'Linens';
-  const [pends, rb] = await Promise.all([
+  const [pends, rb, plan] = await Promise.all([
     operador ? Promise.resolve([]) : db.pendientesDia(fechaCampo, 'linens'),
-    db.rpc(operador ? 'bolsas_linens_mias' : 'bolsas_dia', { p_fecha: fechaCampo })
+    db.rpc(operador ? 'bolsas_linens_mias' : 'bolsas_dia', { p_fecha: fechaCampo }),
+    db.rpc('plan_linens_dia', { p_fecha: fechaCampo })
   ]);
   const abiertos = pends.filter(p => p.estado === 'abierto');
   const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
     ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
-      <div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
+      <h2>Lista de apartamentos · ${(plan.data || []).length}</h2>
+      ${plan.error ? `<p class="msg err">${esc(plan.error.message || plan.error)}</p>` : (plan.data || []).map(x => `<div class="tarjeta"><b>${esc(x.codigo)}</b> ${esc(x.nombre)} <span class="tag">· ${esc(x.zona)}</span><p>${x.camas_dobles||0} camas dobles · ${x.camas_indiv||0} individuales · ${x.sofas_cama||0} sofás cama · ${x.banos||0} baños</p></div>`).join('')}
+      <p class="tag">Cantidades de linens: pendientes de configurar según el estándar aprobado.</p>
+    </section>
+    ${!operador ? `<section class="card"><div class="barra"><h2>Linens · por preparar (${abiertos.length})</h2>${fechaBarra('lFecha', fechaCampo)}</div>
       ${pends.length ? pends.map(p => `<div class="tarjeta ${p.prioritario && p.estado === 'abierto' ? 'prio' : ''}">
           <div class="barra"><span>${p.prioritario ? '<span class="pill rojo">Check-in hoy</span> ' : ''}<span class="cod">${esc(p.propiedades?.codigo)}</span> <b>${esc(p.propiedades?.nombre)}</b> <span class="tag">· ${esc(p.propiedades?.pueblo)}</span></span>
             ${pill(p.estado, ESTADO_ES[p.estado])}</div>
@@ -2182,6 +2187,7 @@ async function pintarLinens(){
           ${supervisor && p.estado === 'abierto' ? `<button class="btn" data-prep="${esc(p.id)}">Preparado</button>` : ''}
         </div>`).join('') : '<p class="empty">No hay pendientes de linens este día.</p>'}
     </section>
+    ` : ''}
     ${rb.error ? `<section class="card"><div class="msg err">${esc(rb.error)}</div></section>` : bolsasHTML(rb.data || [], true)}`;
   bindNav(); bindBolsas();
   if (operador) $('linensScan').onclick = () => abrirEscaner({nombre:'linens bag'}, {
