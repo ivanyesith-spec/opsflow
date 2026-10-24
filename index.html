@@ -2188,6 +2188,30 @@ function mostrarLinensPrueba(apt){
     return esc(x.cantidad+' × '+(art?art[2]:x.clave));
   }).join(' · ');
 }
+function resumenLiderLinens(bolsas){
+  const total=bolsas.length, pendientes=bolsas.filter(b=>b.estado==='por_preparar').length;
+  const preparadas=bolsas.filter(b=>['preparada','en_camion','entregada','recibida'].includes(b.estado)).length;
+  const camion=bolsas.filter(b=>b.estado==='en_camion').length;
+  const entregadas=bolsas.filter(b=>['entregada','recibida'].includes(b.estado)).length;
+  const diferencias=bolsas.filter(b=>b.diferencia && Object.values(b.diferencia).some(v=>Number(v)!==0)).length;
+  const porPersona=new Map();
+  bolsas.filter(b=>b.preparador).forEach(b=>{
+    const nombre=String(b.preparador);
+    porPersona.set(nombre,(porPersona.get(nombre)||0)+1);
+  });
+  const personal=[...porPersona.entries()].sort((a,b)=>b[1]-a[1]);
+  return `<section class="card"><h2>Panel del líder · Linens</h2>
+   <div class="stats"><span><b>${total}</b> bolsas del día</span><span><b>${pendientes}</b> pendientes</span>
+   <span><b>${preparadas}</b> preparadas</span><span><b>${camion}</b> en camión</span>
+   <span><b>${entregadas}</b> entregadas</span><span><b>${diferencias}</b> con diferencias</span></div>
+   <p class="tag">Avance de preparación: ${total?Math.round(preparadas*100/total):0}% · Se cuentan bolsas, no artículos.</p>
+   <h3>Preparadas por operador</h3>
+   ${personal.length?personal.map(([nombre,n])=>`<div class="tarjeta"><b>${esc(nombre)}</b> <span class="tag">· ${n} bolsas</span></div>`).join(''):'<p class="empty">Ninguna preparación registrada todavía.</p>'}
+   ${bolsas.filter(b=>b.estado==='preparada').length?'<h3>Listas para recogida</h3>':''}
+   ${bolsas.filter(b=>b.estado==='preparada').map(b=>`<div class="tarjeta"><b>${esc(b.codigo)}</b> · ${esc(b.preparador||'Sin preparador')} <span class="tag">${b.preparada_en?esc(new Date(b.preparada_en).toLocaleString('es-ES')):''}</span></div>`).join('')}
+   <p class="tag">Las cantidades de piezas siguen sujetas al estándar provisional de empaque.</p>
+  </section>`;
+}
 async function pintarLinens(){
   const operador = perfil.nivel === 'operador' && perfil.departamento === 'Linens';
   const [pends, rb, plan] = await Promise.all([
@@ -2198,6 +2222,7 @@ async function pintarLinens(){
   const abiertos = pends.filter(p => p.estado === 'abierto');
   const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
+    ${supervisor && !rb.error ? resumenLiderLinens(rb.data || []) : ''}
     ${operador ? '<section class="card"><button class="btn sm ghost" id="linensLogout" style="float:right">Cerrar sesión</button><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
       <div class="barra"><h2>Lista de apartamentos · ${(plan.data || []).length}</h2>${operador ? fechaBarra("lFecha",fechaCampo) : ""}</div>
