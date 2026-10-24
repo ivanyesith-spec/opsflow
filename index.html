@@ -2198,7 +2198,7 @@ async function pintarLinens(){
   const abiertos = pends.filter(p => p.estado === 'abierto');
   const supervisor = perfil.nivel !== 'operador';
   app.innerHTML = `${navHTML()}
-    ${operador ? '<section class="card"><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
+    ${operador ? '<section class="card"><button class="btn sm ghost" id="linensLogout" style="float:right">Cerrar sesión</button><h2>Mis bolsas escaneadas</h2><p class="tag">Prepara según la lista de camas y el estándar de Linens. Cuando la bolsa esté lista, escanea su QR; el sistema registrará tu identidad.</p><button class="btn" id="linensScan">Escanear bolsa QR</button></section>' : ''}
     <section class="card">
       <div class="barra"><h2>Lista de apartamentos · ${(plan.data || []).length}</h2>${operador ? fechaBarra("lFecha",fechaCampo) : ""}</div>
       ${plan.error ? `<p class="msg err">${esc(plan.error.message || plan.error)}</p>` : (plan.data || []).map(x => `<div class="tarjeta"><b>${esc(x.codigo)}</b> ${esc(x.nombre)} <span class="tag">· ${esc(x.zona)}</span><p>${x.camas_dobles||0} camas dobles · ${x.camas_indiv||0} individuales · ${x.sofas_cama||0} sofás cama · ${x.banos||0} baños</p><p><b>Contenido estimado (PRUEBA):</b> ${mostrarLinensPrueba(x)}</p></div>`).join('')}
@@ -2215,11 +2215,12 @@ async function pintarLinens(){
     ` : ''}
     ${rb.error ? `<section class="card"><div class="msg err">${esc(rb.error)}</div></section>` : bolsasHTML(rb.data || [], true)}`;
   bindNav(); bindBolsas();
+  if (operador) $('linensLogout').onclick = async () => { const r = await db.salir(); if (r?.error) toast(r.error.message); else { perfil=null; pintarLogin(); } };
   if (operador) $('linensScan').onclick = () => abrirEscaner({nombre:'linens bag'}, {
     titulo:'Escanea la bolsa que vas a preparar', sinGps:true,
     alLeer: async texto => {
       const r = await db.rpc('escanear_bolsa_linens',{p_qr:texto});
-      if (!r.error) { toast('Bolsa asignada a tu cuenta','ok'); pintarLinens(); }
+      if (!r.error) { toast('Bolsa preparada y registrada a tu nombre (estándar provisional)','ok'); pintarLinens(); }
       return r;
     },
     alSin: () => toast('Pide una etiqueta QR válida al líder.')
@@ -2684,9 +2685,10 @@ const BOLSA_ES = { por_preparar: 'Por preparar', preparada: 'Preparada', en_cami
 const BOLSA_PILL = { por_preparar: 'abierto', preparada: 'preparado', en_camion: 'entregado', entregada: 'cerrado' };
 function bolsasHTML(bs, linens){
   const n = e => bs.filter(b => b.estado === e).length;
+  const listas = bs.filter(b => ['preparada','en_camion','entregada','recibida'].includes(b.estado));
   return `<section class="card">
       <div class="barra"><h2>Bolsas de linens (${bs.length})</h2>${linens ? '<button class="btn sm ghost" id="bEtiq">Imprimir etiquetas QR</button>' : ''}</div>
-      <div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span></div>
+      <p><b>${listas.length} bolsas preparadas o despachadas</b> · Responsable y hora visibles en cada registro.</p><div class="stats"><span><b>${n('por_preparar')}</b> por preparar</span><span><b>${n('preparada')}</b> preparadas</span><span><b>${n('en_camion')}</b> en camión</span><span><b>${n('entregada')}</b> entregadas</span></div>
       ${bs.length ? `<ul class="pends">${bs.map(b => `<li><span>${b.entrada ? `<span class="pill rojo">Check-in ${esc(b.entrada)}</span> ` : ''}<span class="cod">${esc(b.codigo)}</span> ${esc(b.nombre)} <span class="tag">· ${esc(b.zona)}</span>
           ${b.preparador ? `<br><span class="tag">Preparado por: ${esc(b.preparador)} · ${b.preparada_en ? esc(new Date(b.preparada_en).toLocaleString('es-ES')) : 'sin hora'}</span>` : ''}
           ${linens && b.camas_dobles !== undefined ? `<br><span class="tag">Camas: ${Number(b.camas_dobles||0)} dobles · ${Number(b.camas_indiv||0)} individuales · ${Number(b.sofas_cama||0)} sofás cama · ${Number(b.banos||0)} baños</span>` : ''}
